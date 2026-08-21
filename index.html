@@ -455,7 +455,7 @@
           </div>
           <div class="picker-label">When (optional)</div>
           <div class="day-picker">${planDayPickerHtml}</div>
-          <input type="time" class="time-input" id="plan-time-input" value="${escapeHtml(newItemPlanTime)}" />
+          <input type="time" step="900" class="time-input" id="plan-time-input" value="${escapeHtml(newItemPlanTime)}" />
           <div class="picker-label" style="margin-top:-6px;">Duration${endPreview ? ` — ends ${endPreview}` : ''}</div>
           <div class="dur-picker">${durPickerHtml}</div>
           <input type="text" class="location-input" id="plan-loc-input" placeholder="Location (optional)" value="${escapeHtml(newItemPlanLocation)}" />
