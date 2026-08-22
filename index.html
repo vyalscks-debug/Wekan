@@ -121,6 +121,12 @@
 
   .time-input, .location-input{ border:1.3px solid var(--ink); border-radius:8px; padding:8px 10px; margin-bottom:14px; font-family:'Inter', sans-serif; font-size:13px; background:var(--paper); color:var(--ink); width:100%; }
   .time-input{ font-family:'JetBrains Mono', monospace; width:auto; }
+  .time-select-row{ display:flex; align-items:center; gap:6px; margin-bottom:14px; }
+  .time-select{
+    border:1.3px solid var(--ink); border-radius:8px; padding:8px 10px;
+    font-family:'JetBrains Mono', monospace; font-size:13px; background:var(--paper); color:var(--ink);
+  }
+  .time-sep{ font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--muted); }
 
   .add-row{ display:flex; align-items:center; gap:10px; padding-bottom:14px; }
   .add-plus{ font-family:'JetBrains Mono', monospace; font-size:16px; color:var(--muted); flex:none; }
@@ -473,7 +479,17 @@
           </div>
           <div class="picker-label">When (optional)</div>
           <div class="day-picker">${planDayPickerHtml}</div>
-          <input type="time" step="900" class="time-input" id="plan-time-input" value="${escapeHtml(newItemPlanTime)}" />
+          <div class="time-select-row">
+            <select class="time-select" id="plan-hour-select">
+              <option value="">—</option>
+              ${Array.from({length:24}, (_,h) => `<option value="${String(h).padStart(2,'0')}" ${newItemPlanTime && newItemPlanTime.split(':')[0]===String(h).padStart(2,'0') ? 'selected' : ''}>${String(h).padStart(2,'0')}</option>`).join('')}
+            </select>
+            <span class="time-sep">:</span>
+            <select class="time-select" id="plan-min-select">
+              <option value="">—</option>
+              ${['00','15','30','45'].map(m => `<option value="${m}" ${newItemPlanTime && newItemPlanTime.split(':')[1]===m ? 'selected' : ''}>${m}</option>`).join('')}
+            </select>
+          </div>
           <div class="picker-label" style="margin-top:-6px;">Duration${endPreview ? ` — ends ${endPreview}` : ''}</div>
           <div class="dur-picker">${durPickerHtml}</div>
           <div class="add-row">
@@ -787,14 +803,16 @@
       });
     });
 
-    const planTimeInput = document.getElementById('plan-time-input');
-    if(planTimeInput){
-      planTimeInput.addEventListener('input', () => {
-        newItemPlanTime = planTimeInput.value;
-        render();
-        const t = document.getElementById('plan-time-input'); if(t) t.focus();
-      });
+    function updatePlanTime(){
+      const h = document.getElementById('plan-hour-select').value;
+      const m = document.getElementById('plan-min-select').value;
+      newItemPlanTime = (h && m) ? `${h}:${m}` : '';
+      render();
     }
+    const planHourSelect = document.getElementById('plan-hour-select');
+    if(planHourSelect){ planHourSelect.addEventListener('change', updatePlanTime); }
+    const planMinSelect = document.getElementById('plan-min-select');
+    if(planMinSelect){ planMinSelect.addEventListener('change', updatePlanTime); }
 
     root.querySelectorAll('[data-plandur]').forEach(btn => {
       btn.addEventListener('click', () => {
