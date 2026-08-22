@@ -431,11 +431,11 @@
             `).join('');
             const pDays = itemPlanDays(it);
             let planLabel = '';
-            if(pDays.length){
-              const timePart = planTimeLabel(it);
+            const timePart = planTimeLabel(it);
+            if(pDays.length || timePart || it.planLocation){
               const locPart = it.planLocation ? ` · ${escapeHtml(it.planLocation)}` : '';
-              const daysPart = pDays.slice().sort((a,b)=>a-b).map(d=>WD_SHORT[d]).join(',');
-              planLabel = `<span class="plan-tag">${daysPart}${timePart ? ' '+timePart : ''}${locPart}</span>`;
+              const daysPart = pDays.length ? pDays.slice().sort((a,b)=>a-b).map(d=>WD_SHORT[d]).join(',') : '';
+              planLabel = `<span class="plan-tag">${daysPart}${timePart ? (daysPart ? ' ' : '')+timePart : ''}${locPart}</span>`;
             }
             return `
               <li class="item-card" data-id="${it.id}">
