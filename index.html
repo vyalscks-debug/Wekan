@@ -279,6 +279,13 @@
     return [];
   }
 
+  function planTimeLabel(it){
+    const end = computeEndTime(it.planTime, it.planDuration);
+    if(it.planTime) return end ? `${it.planTime}–${end}` : it.planTime;
+    if(it.planDuration) return `${it.planDuration < 60 ? it.planDuration+'m' : (it.planDuration/60)+'h'}`;
+    return '';
+  }
+
   function doneDays(rec, itemId){ return rec.completions[itemId] || []; }
   function doneCount(rec, item){ return Math.min(doneDays(rec, item.id).length, item.target); }
   function weekTotals(rec){
@@ -422,11 +429,10 @@
             const toggles = WD_SHORT.map((w,i) => `
               <button class="day-toggle${days.includes(i)?' done':''}" data-action="toggleday" data-id="${it.id}" data-day="${i}" ${editable?'':'disabled'}>${w}</button>
             `).join('');
-            const end = computeEndTime(it.planTime, it.planDuration);
             const pDays = itemPlanDays(it);
             let planLabel = '';
             if(pDays.length){
-              const timePart = it.planTime ? (end ? `${it.planTime}–${end}` : it.planTime) : '';
+              const timePart = planTimeLabel(it);
               const locPart = it.planLocation ? ` · ${escapeHtml(it.planLocation)}` : '';
               const daysPart = pDays.slice().sort((a,b)=>a-b).map(d=>WD_SHORT[d]).join(',');
               planLabel = `<span class="plan-tag">${daysPart}${timePart ? ' '+timePart : ''}${locPart}</span>`;
@@ -557,8 +563,7 @@
         .sort((a,b) => (a.planTime || '99:99').localeCompare(b.planTime || '99:99'));
       const rowsHtml = entries.length
         ? entries.map(it => {
-            const end = computeEndTime(it.planTime, it.planDuration);
-            const timeLabel = it.planTime ? (end ? `${it.planTime}–${end}` : it.planTime) : '—';
+            const timeLabel = planTimeLabel(it) || '—';
             const loc = it.planLocation ? `<span class="sched-loc"> · ${escapeHtml(it.planLocation)}</span>` : '';
             return `
               <div class="sched-row">
