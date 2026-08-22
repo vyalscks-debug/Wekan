@@ -247,7 +247,7 @@
   let newItemCategory = DEFAULT_CATEGORIES[0];
   let newItemTarget = 3;
   let newItemText = '';
-  let newItemPlanDay = null;
+  let newItemPlanDays = [];
   let newItemPlanTime = '';
   let newItemPlanDuration = null;
   let newItemPlanLocation = '';
@@ -265,6 +265,12 @@
   function applyTheme(){
     if(theme === 'dark') document.documentElement.setAttribute('data-theme','dark');
     else document.documentElement.removeAttribute('data-theme');
+  }
+
+  function itemPlanDays(it){
+    if(Array.isArray(it.planDays)) return it.planDays;
+    if(it.planDay !== null && it.planDay !== undefined) return [it.planDay];
+    return [];
   }
 
   function doneDays(rec, itemId){ return rec.completions[itemId] || []; }
@@ -292,7 +298,7 @@
       const carriedItems = priorId
         ? data.weeks[priorId].items.map(it => ({
             id: it.id, text: it.text, category: it.category, target: it.target,
-            planDay: it.planDay, planTime: it.planTime, planDuration: it.planDuration, planLocation: it.planLocation
+            planDays: itemPlanDays(it), planTime: it.planTime, planDuration: it.planDuration, planLocation: it.planLocation
           }))
         : [];
       data.weeks[nowId] = { items: carriedItems, completions: {} };
@@ -406,11 +412,13 @@
               <button class="day-toggle${days.includes(i)?' done':''}" data-action="toggleday" data-id="${it.id}" data-day="${i}" ${editable?'':'disabled'}>${w}</button>
             `).join('');
             const end = computeEndTime(it.planTime, it.planDuration);
+            const pDays = itemPlanDays(it);
             let planLabel = '';
-            if(it.planDay !== null && it.planDay !== undefined){
+            if(pDays.length){
               const timePart = it.planTime ? (end ? `${it.planTime}–${end}` : it.planTime) : '';
               const locPart = it.planLocation ? ` · ${escapeHtml(it.planLocation)}` : '';
-              planLabel = `<span class="plan-tag">${WD_SHORT[it.planDay]}${timePart ? ' '+timePart : ''}${locPart}</span>`;
+              const daysPart = pDays.slice().sort((a,b)=>a-b).map(d=>WD_SHORT[d]).join(',');
+              planLabel = `<span class="plan-tag">${daysPart}${timePart ? ' '+timePart : ''}${locPart}</span>`;
             }
             return `
               <li class="item-card" data-id="${it.id}">
@@ -436,7 +444,7 @@
         ? `<input class="new-cat-input" id="new-cat-input" type="text" placeholder="New category… (Enter)" />`
         : `<button class="cat-pill add-cat" id="add-cat-btn">+</button>`);
 
-      const planDayPickerHtml = WD_SHORT.map((w,i)=>`<button class="day-pill${i===newItemPlanDay?' active':''}" data-plandaypick="${i}">${w}</button>`).join('');
+      const planDayPickerHtml = WD_SHORT.map((w,i)=>`<button class="day-pill${newItemPlanDays.includes(i)?' active':''}" data-plandaypick="${i}">${w}</button>`).join('');
       const durOptions = [15,30,45,60,90,120];
       const durPickerHtml = durOptions.map(d => `
         <button class="dur-pill${d===newItemPlanDuration?' active':''}" data-plandur="${d}">${d < 60 ? d+'m' : (d/60)+'h'}</button>
@@ -508,11 +516,11 @@
     const nowId = currentWeekId();
     const rec = data.weeks[nowId];
     const items = rec ? rec.items : [];
-    const scheduled = items.filter(it => it.planDay !== null && it.planDay !== undefined);
+    const scheduled = items.filter(it => itemPlanDays(it).length > 0);
 
     const dayBlocks = DAY_NAMES.map((name, idx) => {
       const entries = scheduled
-        .filter(it => it.planDay === idx)
+        .filter(it => itemPlanDays(it).includes(idx))
         .sort((a,b) => (a.planTime || '99:99').localeCompare(b.planTime || '99:99'));
       const rowsHtml = entries.length
         ? entries.map(it => {
@@ -739,7 +747,8 @@
     root.querySelectorAll('[data-plandaypick]').forEach(btn => {
       btn.addEventListener('click', () => {
         const val = parseInt(btn.dataset.plandaypick, 10);
-        newItemPlanDay = (newItemPlanDay === val) ? null : val;
+        if(newItemPlanDays.includes(val)) newItemPlanDays = newItemPlanDays.filter(d => d !== val);
+        else newItemPlanDays = [...newItemPlanDays, val];
         render();
       });
     });
@@ -773,10 +782,10 @@
       const rec = data.weeks[selectedWeekId];
       rec.items.push({
         id: uid(), text, category: newItemCategory, target: newItemTarget,
-        planDay: newItemPlanDay, planTime: newItemPlanTime || null,
+        planDays: [...newItemPlanDays], planTime: newItemPlanTime || null,
         planDuration: newItemPlanDuration, planLocation: newItemPlanLocation || null
       });
-      newItemText = ''; newItemPlanDay = null; newItemPlanTime = ''; newItemPlanDuration = null; newItemPlanLocation = '';
+      newItemText = ''; newItemPlanDays = []; newItemPlanTime = ''; newItemPlanDuration = null; newItemPlanLocation = '';
       render(); await save();
       const again = document.getElementById('add-input'); if(again) again.focus();
     }
