@@ -336,6 +336,11 @@
     return weeks;
   }
 
+  function nearestPriorWeekWithItems(weekId){
+    const ids = Object.keys(data.weeks).filter(id => id < weekId && data.weeks[id].items.length > 0).sort();
+    return ids.length ? ids[ids.length - 1] : null;
+  }
+
   function aggregateStats(){
     const weekIds = Object.keys(data.weeks).sort();
     let totalTarget=0, totalDone=0;
@@ -383,7 +388,7 @@
     }).join('');
 
     const nowId = currentWeekId();
-    const editable = selectedWeekId === nowId;
+    const editable = selectedWeekId >= nowId;
     const rec = data.weeks[selectedWeekId];
 
     let summaryHtml = '';
@@ -438,6 +443,11 @@
           }).join('')
         : `<p class="item-empty">${editable ? 'No items yet. Add one below.' : 'No items.'}</p>`;
 
+      const copySourceId = nearestPriorWeekWithItems(selectedWeekId);
+      const copyBlockHtml = (editable && rec.items.length === 0 && copySourceId)
+        ? `<button class="quote-add-link" id="copy-prev-week" style="margin:2px 0 14px;">↧ Copy items from ${weekRangeLabel(copySourceId)}</button>`
+        : '';
+
       const catPickerHtml = data.categories.map(c => `
         <button class="cat-pill${c===newItemCategory && !addingCategory ? ' active':''}" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</button>
       `).join('') + (addingCategory
@@ -480,6 +490,7 @@
           <span class="panel-frac">${done} / ${target} done</span>
         </div>
         <ul class="list">${listHtml}</ul>
+        ${copyBlockHtml}
         ${addBlock}
       `;
     }
@@ -670,7 +681,15 @@
     if(activeTab !== 'week') return;
 
     root.querySelectorAll('.week-row').forEach(row => {
-      row.addEventListener('click', () => { selectedWeekId = row.dataset.week; render(); });
+      row.addEventListener('click', async () => {
+        selectedWeekId = row.dataset.week;
+        const nowId = currentWeekId();
+        if(selectedWeekId >= nowId && !data.weeks[selectedWeekId]){
+          data.weeks[selectedWeekId] = { items: [], completions: {} };
+          await save();
+        }
+        render();
+      });
     });
     document.getElementById('prev-month').addEventListener('click', () => {
       viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()-1, 1); render();
@@ -736,6 +755,21 @@
           const input = document.getElementById('add-input'); if(input) input.focus();
         }
         if(e.key === 'Escape'){ addingCategory = false; render(); }
+      });
+    }
+
+    const copyPrevBtn = document.getElementById('copy-prev-week');
+    if(copyPrevBtn){
+      copyPrevBtn.addEventListener('click', async () => {
+        const sourceId = nearestPriorWeekWithItems(selectedWeekId);
+        if(!sourceId) return;
+        const sourceItems = data.weeks[sourceId].items;
+        const rec = data.weeks[selectedWeekId];
+        rec.items = sourceItems.map(it => ({
+          id: uid(), text: it.text, category: it.category, target: it.target,
+          planDays: itemPlanDays(it), planTime: it.planTime, planDuration: it.planDuration, planLocation: it.planLocation
+        }));
+        render(); await save();
       });
     }
 
