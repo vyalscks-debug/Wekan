@@ -472,11 +472,17 @@
           <div class="picker-label">Category</div>
           <div class="category-picker">${catPickerHtml}</div>
           <div class="picker-label">Target this week</div>
-          <div class="target-stepper">
-            <button class="stepper-btn" id="target-minus">−</button>
-            <span class="stepper-value">${newItemTarget}x / week</span>
-            <button class="stepper-btn" id="target-plus">+</button>
-          </div>
+          ${newItemPlanDays.length > 0 ? `
+            <div class="target-stepper">
+              <span class="stepper-value">${newItemPlanDays.length}x / week <span style="color:var(--muted);">(from selected days)</span></span>
+            </div>
+          ` : `
+            <div class="target-stepper">
+              <button class="stepper-btn" id="target-minus">−</button>
+              <span class="stepper-value">${newItemTarget}x / week</span>
+              <button class="stepper-btn" id="target-plus">+</button>
+            </div>
+          `}
           <div class="picker-label">When (optional)</div>
           <div class="day-picker">${planDayPickerHtml}</div>
           <div class="time-select-row">
@@ -832,8 +838,9 @@
       const text = input ? input.value.trim() : '';
       if(!text) return;
       const rec = data.weeks[selectedWeekId];
+      const finalTarget = newItemPlanDays.length > 0 ? newItemPlanDays.length : newItemTarget;
       rec.items.push({
-        id: uid(), text, category: newItemCategory, target: newItemTarget,
+        id: uid(), text, category: newItemCategory, target: finalTarget,
         planDays: [...newItemPlanDays], planTime: newItemPlanTime || null,
         planDuration: newItemPlanDuration, planLocation: newItemPlanLocation || null
       });
