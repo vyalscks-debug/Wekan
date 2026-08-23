@@ -258,6 +258,7 @@
   let newItemPlanDuration = null;
   let newItemPlanLocation = '';
   let addingCategory = false;
+  let newCatText = '';
   let notifyOn = false;
   let activeTab = 'week';
   let theme = 'light';
@@ -463,7 +464,7 @@
       const catPickerHtml = data.categories.map(c => `
         <button class="cat-pill${c===newItemCategory && !addingCategory ? ' active':''}" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</button>
       `).join('') + (addingCategory
-        ? `<input class="new-cat-input" id="new-cat-input" type="text" placeholder="New category… (Enter)" />`
+        ? `<input class="new-cat-input" id="new-cat-input" type="text" placeholder="New category…" value="${escapeHtml(newCatText)}" /><button class="add-submit-btn" id="new-cat-submit">Add</button>`
         : `<button class="cat-pill add-cat" id="add-cat-btn">+</button>`);
 
       const planDayPickerHtml = WD_SHORT.map((w,i)=>`<button class="day-pill${newItemPlanDays.includes(i)?' active':''}" data-plandaypick="${i}">${w}</button>`).join('');
@@ -763,27 +764,35 @@
     const addCatBtn = document.getElementById('add-cat-btn');
     if(addCatBtn){
       addCatBtn.addEventListener('click', () => {
-        addingCategory = true; render();
+        addingCategory = true; newCatText = ''; render();
         const input = document.getElementById('new-cat-input'); if(input) input.focus();
       });
     }
 
+    async function submitCategory(){
+      const catInput = document.getElementById('new-cat-input');
+      const val = catInput ? catInput.value.trim() : newCatText.trim();
+      if(!val) return;
+      const exists = data.categories.find(c => c.toLowerCase() === val.toLowerCase());
+      if(!exists) data.categories.push(val);
+      newItemCategory = exists || val;
+      addingCategory = false;
+      newCatText = '';
+      render(); await save();
+      const input = document.getElementById('add-input'); if(input) input.focus();
+    }
+
     const newCatInput = document.getElementById('new-cat-input');
     if(newCatInput){
+      newCatInput.addEventListener('input', () => { newCatText = newCatInput.value; });
       newCatInput.addEventListener('keydown', async (e) => {
-        if(e.key === 'Enter'){
-          const val = newCatInput.value.trim();
-          if(!val) return;
-          const exists = data.categories.find(c => c.toLowerCase() === val.toLowerCase());
-          if(!exists) data.categories.push(val);
-          newItemCategory = exists || val;
-          addingCategory = false;
-          render(); await save();
-          const input = document.getElementById('add-input'); if(input) input.focus();
-        }
-        if(e.key === 'Escape'){ addingCategory = false; render(); }
+        if(e.key === 'Enter') await submitCategory();
+        if(e.key === 'Escape'){ addingCategory = false; newCatText=''; render(); }
       });
     }
+
+    const newCatSubmitBtn = document.getElementById('new-cat-submit');
+    if(newCatSubmitBtn){ newCatSubmitBtn.addEventListener('click', submitCategory); }
 
     const copyPrevBtn = document.getElementById('copy-prev-week');
     if(copyPrevBtn){
