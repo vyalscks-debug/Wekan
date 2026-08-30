@@ -6,7 +6,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Weekly" />
-<title>Weekly</title>
+<title>Weekly + 1005호 감독관</title>
+
+<!-- AI 카메라 인식을 위한 TensorFlow.js 라이브러리 추가 -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
+
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -24,7 +29,9 @@
     font-family:'Inter', -apple-system, sans-serif; -webkit-font-smoothing:antialiased;
     transition:background 0.15s ease, color 0.15s ease;
   }
-  #root{ max-width:420px; margin:0 auto; padding:36px 22px 90px; min-height:100vh; }
+  
+  /* 감독관이 들어갈 자리를 위해 기존 root 하단 여백 조정 */
+  #root{ max-width:420px; margin:0 auto; padding:36px 22px 20px; }
 
   .top-bar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
   .eyebrow{ font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); margin:0; }
@@ -168,10 +175,85 @@
   .sched-empty{ color:var(--muted); font-size:13px; padding:4px 0 2px; }
 
   .status{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--muted); text-align:center; padding:60px 0; }
+
+  /* ------------------------------------------------ */
+  /* [추가됨] 1005호 감독관 UI CSS                      */
+  /* ------------------------------------------------ */
+  #ai-monitor-container { max-width:420px; margin:0 auto; padding:0 22px 90px; }
+  .monitor-card { border: 1.5px solid var(--ink); border-radius: 12px; padding: 16px; margin: 10px 0 20px 0; background: var(--band); }
+  .character-section { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px dashed var(--divider); }
+  .character-avatar-box { position: relative; width: 64px; height: 64px; border-radius: 50%; border: 1.5px solid var(--ink); background: #fff; overflow: hidden; flex-shrink: 0; }
+  .character-avatar-box img { width: 100%; height: 100%; object-fit: cover; }
+  .cam-status-dot { position: absolute; bottom: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%; background: #ccc; border: 1.5px solid #fff; }
+  .cam-status-dot.active { background: #10b981; }
+
+  .speech-bubble { position: relative; background: var(--paper); border: 1.5px solid var(--ink); border-radius: 10px; padding: 10px 12px; flex: 1; }
+  .speech-bubble::before { content: ''; position: absolute; left: -7px; top: 18px; width: 10px; height: 10px; background: var(--paper); border-left: 1.5px solid var(--ink); border-bottom: 1.5px solid var(--ink); transform: rotate(45deg); }
+  .char-name { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+  .feedback-text { font-size: 13px; line-height: 1.45; color: var(--ink); font-weight: 600; }
+
+  .status-badge { font-family: 'JetBrains Mono', monospace; font-size: 9px; padding: 1px 6px; border-radius: 8px; border: 1px solid var(--ink); }
+  .status-badge.on { background: var(--ink); color: var(--paper); }
+  .status-badge.off { background: var(--paper); color: var(--muted); }
+
+  .monitor-body { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+  .webcam-wrapper { position: relative; width: 90px; height: 70px; border-radius: 8px; overflow: hidden; border: 1px solid var(--ink); background: #000; flex: none; }
+  #webcam { width: 100%; height: 100%; object-fit: cover; }
+  .cam-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #fff; background: rgba(0,0,0,0.6); font-family: 'JetBrains Mono', monospace; text-align: center; }
+
+  .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; flex: 1; }
+  .metric-box { display: flex; flex-direction: column; align-items: center; background: var(--paper); border: 1px solid var(--divider); padding: 5px 4px; border-radius: 6px; }
+  .metric-label { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--muted); margin-bottom: 2px; }
+  .metric-value { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700; }
+  .metric-value.highlight { font-size: 16px; color: var(--ink); }
+  .start-btn { width: 100%; border: 1px solid var(--ink); background: var(--ink); color: var(--paper); font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 10px; border-radius: 8px; cursor: pointer; }
+  .start-btn:hover { opacity: 0.9; }
 </style>
 </head>
 <body>
+<!-- 기존 앱 렌더링 영역 -->
 <div id="root"><div class="status">Loading…</div></div>
+
+<!-- [추가됨] 1005호 멧돼지 감독관 HTML 구조 -->
+<div id="ai-monitor-container">
+  <div id="ai-monitor-section" class="monitor-card">
+    <div class="character-section">
+      <div class="character-avatar-box">
+        <img id="char-avatar" src="IMG_6348.JPEG" alt="1005호 감독관" />
+        <span class="cam-status-dot" id="status-dot"></span>
+      </div>
+      <div class="speech-bubble">
+        <div class="char-name">1005호 감독관 <span id="cam-status-badge" class="status-badge off">OFFLINE</span></div>
+        <div id="ai-peer-feedback" class="feedback-text">
+          "킁킁... 카메라 너머에서 기다리고 있다 꿀! [부르기] 버튼을 누르면 감시를 시작하지!"
+        </div>
+      </div>
+    </div>
+
+    <div class="monitor-body">
+      <div class="webcam-wrapper">
+        <video id="webcam" autoplay playsinline muted></video>
+        <div id="cam-overlay" class="cam-overlay">시선 추적 OFF</div>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric-box">
+          <span class="metric-label">집중 시간</span>
+          <span id="focus-time" class="metric-value highlight">00:00</span>
+        </div>
+        <div class="metric-box">
+          <span class="metric-label">딴짓 횟수</span>
+          <span id="foul-count" class="metric-value">0회</span>
+        </div>
+        <div class="metric-box">
+          <span class="metric-label">오늘 완료</span>
+          <span id="today-done-count" class="metric-value">0개</span>
+        </div>
+      </div>
+    </div>
+
+    <button id="toggle-cam-btn" class="start-btn">1005호 감독관 부르기</button>
+  </div>
+</div>
 
 <script>
 (function(){
@@ -890,6 +972,113 @@
     }
   }
 
+  // ----------------------------------------------------
+  // [추가됨] 1005호 멧돼지 감독관 AI 로직
+  // ----------------------------------------------------
+  let aiModel = null;
+  let isMonitoring = false;
+  let monitorInterval = null;
+  let videoStream = null;
+
+  let focusSeconds = 0;
+  let foulCount = 0;
+  let consecutiveMissingFrames = 0;
+
+  // 기존 앱 데이터를 읽어와서 오늘 완료한 할 일 갯수를 계산합니다.
+  function getTodayCompletedCount() {
+    const nowId = currentWeekId();
+    if (!data.weeks || !data.weeks[nowId]) return 0;
+    const rec = data.weeks[nowId];
+    // 기존 앱의 요일 인덱스 (월=0, ... 일=6) 에 맞게 오늘의 요일 인덱스 계산
+    const todayIdx = (new Date().getDay() + 6) % 7;
+    let count = 0;
+    if(rec && rec.items) {
+      rec.items.forEach(it => {
+        if (doneDays(rec, it.id).includes(todayIdx)) count++;
+      });
+    }
+    return count;
+  }
+
+  function evaluatePerformance() {
+    const todayDoneCount = getTodayCompletedCount();
+    document.getElementById('foul-count').textContent = foulCount + '회';
+    document.getElementById('today-done-count').textContent = todayDoneCount + '개';
+
+    const mins = String(Math.floor(focusSeconds / 60)).padStart(2, '0');
+    const secs = String(focusSeconds % 60).padStart(2, '0');
+    document.getElementById('focus-time').textContent = mins + ':' + secs;
+
+    const feedbackEl = document.getElementById('ai-peer-feedback');
+    
+    if (foulCount > 3 && (focusSeconds / foulCount) < 60) {
+      feedbackEl.innerHTML = '"킁킁! 어디서 자꾸 딴짓하는 냄새가 난다 꿀! 모니터 안 보고 어딜 보는 거냐!"';
+    } else if (focusSeconds > 600 && todayDoneCount > 0) {
+      feedbackEl.innerHTML = '"오호! 멧돼지처럼 우직하게 돌진 중이군! 오늘 목표도 달성하고 아주 훌륭하다 꿀!"';
+    } else if (focusSeconds > 300) {
+      feedbackEl.innerHTML = '"좋아, 지금 아주 끈기 있게 잘하고 있다. 이대로 멈추지 말고 직진이다 꿀!"';
+    } else {
+      feedbackEl.innerHTML = '"1005호의 예리한 후각으로 지켜보는 중이다! 어서 할 일을 하나라도 해치워 보자 꿀!"';
+    }
+  }
+
+  async function toggleMonitoring() {
+    const btn = document.getElementById('toggle-cam-btn');
+    const badge = document.getElementById('cam-status-badge');
+    const dot = document.getElementById('status-dot');
+    const overlay = document.getElementById('cam-overlay');
+    const video = document.getElementById('webcam');
+    const feedbackEl = document.getElementById('ai-peer-feedback');
+
+    if (!isMonitoring) {
+      try {
+        btn.textContent = "1005호 연결 중...";
+        if (!aiModel) aiModel = await blazeface.load();
+
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = videoStream;
+
+        isMonitoring = true;
+        btn.textContent = "1005호 감독관 퇴근시키기";
+        badge.textContent = "WATCHING";
+        badge.className = "status-badge on";
+        dot.className = "cam-status-dot active";
+        overlay.style.display = "none";
+        
+        feedbackEl.innerHTML = '"좋아, 렌즈 세팅 끝! 멧돼지의 눈썰미로 확실하게 감시해주지 꿀!"';
+
+        monitorInterval = setInterval(async () => {
+          const predictions = await aiModel.estimateFaces(video, false);
+          if (predictions.length > 0) {
+            focusSeconds++;
+            consecutiveMissingFrames = 0;
+          } else {
+            consecutiveMissingFrames++;
+            if (consecutiveMissingFrames === 2) foulCount++;
+          }
+          evaluatePerformance();
+        }, 1000);
+      } catch (err) {
+        alert("카메라 권한을 허용해야 1005호가 시선을 추적할 수 있습니다.");
+        btn.textContent = "1005호 감독관 부르기";
+      }
+    } else {
+      clearInterval(monitorInterval);
+      if (videoStream) videoStream.getTracks().forEach(track => track.stop());
+      isMonitoring = false;
+      btn.textContent = "1005호 감독관 부르기";
+      badge.textContent = "OFFLINE";
+      badge.className = "status-badge off";
+      dot.className = "cam-status-dot";
+      overlay.style.display = "flex";
+      feedbackEl.innerHTML = '"오늘 감시는 여기까지! 수고했다 꿀. 다음에 또 부르라고!"';
+    }
+  }
+
+  // 버튼 이벤트 연결
+  document.getElementById('toggle-cam-btn').addEventListener('click', toggleMonitoring);
+
+  // 기존 앱 초기 구동 함수
   load();
 })();
 </script>
