@@ -169,17 +169,16 @@
   .sched-loc{ color:var(--muted); font-size:11.5px; }
   .sched-empty{ color:var(--muted); font-size:13px; padding:4px 0 2px; }
 
-  .focus-char{ width:120px; height:120px; margin:0 auto 12px; color:var(--ink); display:flex; align-items:center; justify-content:center; }
+  .focus-char{ width:76px; height:76px; margin:0 auto 4px; color:var(--ink); }
   .focus-char svg{ width:100%; height:100%; overflow:visible; }
-  .focus-char-face{ animation: charBob 2.4s ease-in-out infinite; transform-origin:50px 50px; }
-  .char-bob{ animation: charBob 2.4s ease-in-out infinite; }
+  .focus-char-face{ animation: charBob 2.4s ease-in-out infinite; transform-origin:50px 50px; transform-box: fill-box; }
   @keyframes charBob{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-4px);} }
-  .focus-char-eye{ animation: charBlink 4.5s infinite; transform-origin:center; }
+  .focus-char-eye{ animation: charBlink 4.5s infinite; transform-origin:center; transform-box: fill-box; }
   @keyframes charBlink{ 0%,92%,100%{ transform:scaleY(1);} 96%{ transform:scaleY(0.1);} }
   .focus-char.shake{ animation: charShake 0.4s ease; }
   @keyframes charShake{ 0%,100%{transform:translateX(0);} 25%{transform:translateX(-6px);} 75%{transform:translateX(6px);} }
 
-  .focus-video-wrap{ position:relative; width:100%; border-radius:10px; overflow:hidden; border:1px solid var(--ink); background:#000; margin-bottom:14px; }
+  .focus-video-wrap{ position:relative; width:100%; border-radius:10px; overflow:hidden; border:1px solid var(--ink); background:#000; }
   #focus-video{ width:100%; display:block; aspect-ratio:4/3; object-fit:cover; }
   .focus-stat-row{ display:flex; justify-content:space-between; align-items:baseline; margin-top:14px; }
   .focus-timer{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:32px; letter-spacing:-0.01em; }
@@ -269,7 +268,7 @@
     try{ localStorage.setItem(key, value); }catch(e){ console.error('Save failed', e); }
   }
 
-  let data = { weeks: {}, categories: [], quotes: [], customCharImg: null };
+  let data = { weeks: {}, categories: [], quotes: [] };
   let viewMonth = new Date(); viewMonth.setDate(1); viewMonth.setHours(0,0,0,0);
   let selectedWeekId = currentWeekId();
   let newItemCategory = DEFAULT_CATEGORIES[0];
@@ -287,7 +286,7 @@
   let generatingReport = false;
   let lockNotice = false;
 
-  // Focus session
+  // Focus session (local face-detection, no server calls)
   let focusActive = false;
   let focusStream = null;
   let focusModel = null;
@@ -397,8 +396,8 @@ ${lines || '(등록된 항목 없음)'}
   async function load(){
     try{
       const raw = await storageGet(STORAGE_KEY);
-      data = raw ? JSON.parse(raw) : { weeks: {}, categories: [], quotes: [], customCharImg: null };
-    }catch(e){ data = { weeks: {}, categories: [], quotes: [], customCharImg: null }; }
+      data = raw ? JSON.parse(raw) : { weeks: {}, categories: [], quotes: [] };
+    }catch(e){ data = { weeks: {}, categories: [], quotes: [] }; }
     if(!data.weeks) data.weeks = {};
     if(!data.categories || !data.categories.length) data.categories = [...DEFAULT_CATEGORIES];
     if(!data.quotes) data.quotes = [];
@@ -787,26 +786,6 @@ ${lines || '(등록된 항목 없음)'}
       `;
     }
 
-    const charDisplayHtml = data.customCharImg
-      ? `<img id="characterImg" src="${data.customCharImg}" alt="캐릭터" style="width: 100%; height: 100%; object-fit: contain;">`
-      : `<svg viewBox="0 0 100 100">
-          <g class="focus-char-face" id="focus-char-face">
-            <circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" stroke-width="4"/>
-            <ellipse class="focus-char-eye" cx="35" cy="45" rx="5" ry="7" fill="currentColor"/>
-            <ellipse class="focus-char-eye" cx="65" cy="45" rx="5" ry="7" fill="currentColor" style="animation-delay:0.15s;"/>
-            <path id="focus-char-mouth" d="M35,68 Q50,68 65,68" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-          </g>
-        </svg>`;
-
-    const uploadBtnHtml = `
-      <!-- 캐릭터 이미지 업로드 UI -->
-      <div class="upload-box" style="margin-bottom: 15px; text-align: center;">
-        <label for="imageInput" style="padding: 8px 16px; background: var(--ink); color: var(--paper); border-radius: 8px; cursor: pointer; font-size: 13px;">
-          📷 캐릭터 이미지 변경하기
-        </label>
-        <input type="file" id="imageInput" accept="image/*" style="display: none;">
-      </div>`;
-
     if(!focusActive){
       const nowId = currentWeekId();
       const rec = data.weeks[nowId];
@@ -816,12 +795,6 @@ ${lines || '(등록된 항목 없음)'}
         : `<option value="">No items yet — add some in This Week</option>`;
       return `
         <p class="section-title" style="margin-top:0;">Focus session</p>
-
-        ${uploadBtnHtml}
-        <div class="focus-char character-container char-bob" id="characterContainer">
-          ${charDisplayHtml}
-        </div>
-
         <p class="reminder-sub">Turns on your camera and watches for your face using on-device detection — nothing is uploaded or recorded, it never leaves your phone. If you're out of frame too long, it counts as a foul. Link it to an item and it'll auto-check that item for today if you stayed focused enough.</p>
         <div class="picker-label" style="margin-top:16px;">Link to item (optional)</div>
         <select class="focus-select" id="focus-item-select">${itemOptions}</select>
@@ -836,11 +809,16 @@ ${lines || '(등록된 항목 없음)'}
     return `
       <p class="section-title" style="margin-top:0;">Focus session</p>
       <div class="focus-video-wrap"><video id="focus-video" autoplay playsinline muted></video></div>
-      
-      <div class="focus-char character-container char-bob" id="characterContainer">
-        ${charDisplayHtml}
+      <div class="focus-char" id="focus-char">
+        <svg viewBox="0 0 100 100">
+          <g class="focus-char-face" id="focus-char-face">
+            <circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" stroke-width="4"/>
+            <ellipse class="focus-char-eye" cx="35" cy="45" rx="5" ry="7" fill="currentColor"/>
+            <ellipse class="focus-char-eye" cx="65" cy="45" rx="5" ry="7" fill="currentColor" style="animation-delay:0.15s;"/>
+            <path id="focus-char-mouth" d="M35,68 Q50,68 65,68" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+          </g>
+        </svg>
       </div>
-
       <div class="focus-stat-row">
         <span class="focus-timer" id="focus-timer-text">${formatMMSS(Math.max(0, focusDurationMin*60 - focusElapsedSec))}</span>
         <span class="focus-substat" id="focus-substat-text">Focused ${formatMMSS(focusedSec)}<br/>Fouls: ${foulCount}</span>
@@ -882,46 +860,60 @@ ${lines || '(등록된 항목 없음)'}
     const video = document.getElementById('focus-video');
     if(video){ video.srcObject = focusStream; video.play().catch(()=>{}); }
 
-    focusTimerInterval = setInterval(async () => {
+    // Timer: simple, synchronous, can never be blocked by face-detection work.
+    focusTimerInterval = setInterval(() => {
       focusElapsedSec += 1;
-      const video = document.getElementById('focus-video');
-      let faceSeen = false;
-      try{
-        if(video && video.readyState >= 2 && focusModel){
-          const predictions = await focusModel.estimateFaces(video, false);
-          faceSeen = predictions.length > 0;
-        }
-      }catch(e){ faceSeen = false; }
-
-      const mouthEl = document.getElementById('focus-char-mouth');
-      const charEl = document.getElementById('characterContainer') || document.getElementById('focus-char');
-
-      if(faceSeen){
-        focusedSec += 1;
-        consecutiveMissing = 0;
-        if(mouthEl) mouthEl.setAttribute('d', 'M35,66 Q50,78 65,66');
-        if(focusElapsedSec % 20 === 0){
-          focusFeedbackLine = FOCUS_LINES_OK[Math.floor(Math.random()*FOCUS_LINES_OK.length)];
-          const fb = document.getElementById('focus-feedback-text'); if(fb) fb.textContent = focusFeedbackLine;
-        }
-      }else{
-        consecutiveMissing += 1;
-        if(mouthEl) mouthEl.setAttribute('d', 'M35,72 Q50,60 65,72');
-        if(consecutiveMissing === 3){
-          foulCount += 1;
-          focusFeedbackLine = FOCUS_LINES_FOUL[Math.floor(Math.random()*FOCUS_LINES_FOUL.length)];
-          const fb = document.getElementById('focus-feedback-text'); if(fb) fb.textContent = focusFeedbackLine;
-          if(charEl){ charEl.classList.remove('shake'); void charEl.offsetWidth; charEl.classList.add('shake'); }
-        }
-      }
-
       const timerEl = document.getElementById('focus-timer-text');
       if(timerEl) timerEl.textContent = formatMMSS(Math.max(0, focusDurationMin*60 - focusElapsedSec));
-      const substatEl = document.getElementById('focus-substat-text');
-      if(substatEl) substatEl.innerHTML = `Focused ${formatMMSS(focusedSec)}<br/>Fouls: ${foulCount}`;
-
       if(focusElapsedSec >= focusDurationMin*60) endFocusSession();
     }, 1000);
+
+    // Face detection: runs independently via self-scheduling loop so a slow/hung
+    // estimateFaces() call can never stall the timer above.
+    scheduleFaceCheck();
+  }
+
+  function scheduleFaceCheck(){
+    if(!focusActive) return;
+    detectFaceOnce().finally(() => {
+      if(focusActive) setTimeout(scheduleFaceCheck, 1000);
+    });
+  }
+
+  async function detectFaceOnce(){
+    let faceSeen = false;
+    try{
+      const video = document.getElementById('focus-video');
+      if(video && video.readyState >= 2 && focusModel){
+        const predictions = await focusModel.estimateFaces(video, false);
+        faceSeen = predictions.length > 0;
+      }
+    }catch(e){ faceSeen = false; }
+
+    const mouthEl = document.getElementById('focus-char-mouth');
+    const charEl = document.getElementById('focus-char');
+
+    if(faceSeen){
+      focusedSec += 1;
+      consecutiveMissing = 0;
+      if(mouthEl) mouthEl.setAttribute('d', 'M35,66 Q50,78 65,66');
+      if(focusedSec % 20 === 0){
+        focusFeedbackLine = FOCUS_LINES_OK[Math.floor(Math.random()*FOCUS_LINES_OK.length)];
+        const fb = document.getElementById('focus-feedback-text'); if(fb) fb.textContent = focusFeedbackLine;
+      }
+    }else{
+      consecutiveMissing += 1;
+      if(mouthEl) mouthEl.setAttribute('d', 'M35,72 Q50,60 65,72');
+      if(consecutiveMissing === 3){
+        foulCount += 1;
+        focusFeedbackLine = FOCUS_LINES_FOUL[Math.floor(Math.random()*FOCUS_LINES_FOUL.length)];
+        const fb = document.getElementById('focus-feedback-text'); if(fb) fb.textContent = focusFeedbackLine;
+        if(charEl){ charEl.classList.remove('shake'); void charEl.offsetWidth; charEl.classList.add('shake'); }
+      }
+    }
+
+    const substatEl = document.getElementById('focus-substat-text');
+    if(substatEl) substatEl.innerHTML = `Focused ${formatMMSS(focusedSec)}<br/>Fouls: ${foulCount}`;
   }
 
   async function endFocusSession(){
@@ -1269,22 +1261,6 @@ ${lines || '(등록된 항목 없음)'}
   }
 
   function bindFocusEvents(){
-    const imageInput = document.getElementById('imageInput');
-    if (imageInput) {
-      imageInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = async function(event) {
-            data.customCharImg = event.target.result;
-            await save();
-            render();
-          };
-          reader.readAsDataURL(file);
-        }
-      });
-    }
-
     const itemSelect = document.getElementById('focus-item-select');
     if(itemSelect){
       itemSelect.addEventListener('change', () => { focusSelectedItemId = itemSelect.value || null; });
