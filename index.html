@@ -167,8 +167,6 @@
   .sched-loc{ color:var(--muted); font-size:11.5px; }
   .sched-empty{ color:var(--muted); font-size:13px; padding:4px 0 2px; }
 
-  /* Focus character: outer handles shake, inner handles bob, so both work
-     whether we're showing the built-in SVG or an uploaded photo. */
   .focus-char{ width:96px; height:96px; margin:0 auto 10px; }
   .focus-char.shake{ animation: charShake 0.4s ease; }
   @keyframes charShake{ 0%,100%{transform:translateX(0);} 25%{transform:translateX(-6px);} 75%{transform:translateX(6px);} }
@@ -184,7 +182,6 @@
   @keyframes charBlink{ 0%,92%,100%{ transform:scaleY(1);} 96%{ transform:scaleY(0.1);} }
 
   .char-upload-row{ text-align:center; margin-bottom:14px; display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap; }
-  .char-upload-label{ padding:7px 14px; background:var(--ink); color:var(--paper); border-radius:14px; cursor:pointer; font-family:'JetBrains Mono', monospace; font-size:11px; }
 
   .focus-video-wrap{ position:relative; width:100%; border-radius:10px; overflow:hidden; border:1px solid var(--ink); background:#000; margin-bottom:14px; }
   #focus-video{ width:100%; display:block; aspect-ratio:4/3; object-fit:cover; }
@@ -298,7 +295,7 @@
   let currentQuote = '';
   let addingQuote = false;
 
-  // ---- Focus session (on-device face detection; nothing recorded/uploaded) ----
+  // ---- Focus session ----
   let focusActive = false;
   let focusStream = null;
   let focusModel = null;
@@ -318,7 +315,7 @@
   function loadKoreanVoice(){
     if(!('speechSynthesis' in window)) return;
     const voices = window.speechSynthesis.getVoices();
-    koreanVoice = voices.find(v => v.lang && v.lang.startsWith('ko')) || null;
+    koreanVoice = voices.find(v => v.lang && (v.lang.startsWith('ko') || v.lang.includes('KR'))) || null;
   }
   if('speechSynthesis' in window){
     loadKoreanVoice();
@@ -331,8 +328,9 @@
       window.speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance(text);
       utter.lang = 'ko-KR';
+      if(!koreanVoice) loadKoreanVoice();
       if(koreanVoice) utter.voice = koreanVoice;
-      utter.pitch = 0.8;
+      utter.pitch = 0.9;
       utter.rate = 1.0;
       window.speechSynthesis.speak(utter);
     }catch(e){}
@@ -797,83 +795,51 @@ ${lines || '(등록된 항목 없음)'}
     `;
   }
 
-  function charBearNeutral(){
+  // ---- 꿀꿀돼지 캐릭터 SVG 함수 ----
+  function charPigBase(faceInner){
     return `<svg viewBox="0 0 100 100">
-      <circle cx="26" cy="24" r="11" fill="none" stroke="currentColor" stroke-width="4"/>
-      <circle cx="74" cy="24" r="11" fill="none" stroke="currentColor" stroke-width="4"/>
-      <circle cx="50" cy="52" r="38" fill="none" stroke="currentColor" stroke-width="4"/>
-      <circle class="focus-char-eye" cx="38" cy="48" r="3.5" fill="currentColor"/>
-      <circle class="focus-char-eye" cx="62" cy="48" r="3.5" fill="currentColor" style="animation-delay:0.15s;"/>
-      <ellipse cx="50" cy="61" rx="10" ry="7" fill="none" stroke="currentColor" stroke-width="3"/>
-      <path d="M46,61 Q50,65 54,61" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-    </svg>`;
-  }
-  function charBearHappy(){
-    return `<svg viewBox="0 0 100 100">
-      <circle cx="26" cy="24" r="11" fill="none" stroke="currentColor" stroke-width="4"/>
-      <circle cx="74" cy="24" r="11" fill="none" stroke="currentColor" stroke-width="4"/>
-      <circle cx="50" cy="52" r="38" fill="none" stroke="currentColor" stroke-width="4"/>
-      <path d="M33,48 Q38,43 43,48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-      <path d="M57,48 Q62,43 67,48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-      <ellipse cx="50" cy="61" rx="10" ry="7" fill="none" stroke="currentColor" stroke-width="3"/>
-      <path d="M42,59 Q50,70 58,59" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-      <path d="M14,30 L19,25 M17,35 L23,33" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      <path d="M86,30 L81,25 M83,35 L77,33" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-    </svg>`;
-  }
-  function charBearFoul(){
-    return `<svg viewBox="0 0 100 100">
-      <circle cx="26" cy="24" r="11" fill="none" stroke="currentColor" stroke-width="4"/>
-      <circle cx="74" cy="24" r="11" fill="none" stroke="currentColor" stroke-width="4"/>
-      <circle cx="50" cy="52" r="38" fill="none" stroke="currentColor" stroke-width="4"/>
-      <line x1="32" y1="42" x2="44" y2="47" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-      <line x1="68" y1="42" x2="56" y2="47" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-      <circle cx="38" cy="50" r="3" fill="currentColor"/>
-      <circle cx="62" cy="50" r="3" fill="currentColor"/>
-      <ellipse cx="50" cy="63" rx="10" ry="7" fill="none" stroke="currentColor" stroke-width="3"/>
-      <path d="M44,67 Q50,61 56,67" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+      <!-- 귀 -->
+      <path d="M22,32 Q15,10 32,20 Z" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M78,32 Q85,10 68,20 Z" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/>
+      <!-- 얼굴 윤곽 -->
+      <circle cx="50" cy="54" r="34" fill="none" stroke="currentColor" stroke-width="4"/>
+      ${faceInner}
+      <!-- 돼지 코 (원형 콧구멍 2개) -->
+      <ellipse cx="50" cy="62" rx="12" ry="8" fill="none" stroke="currentColor" stroke-width="3"/>
+      <circle cx="45" cy="62" r="2.2" fill="currentColor"/>
+      <circle cx="55" cy="62" r="2.2" fill="currentColor"/>
     </svg>`;
   }
 
-  function charBoarBase(faceInner){
-    return `<svg viewBox="0 0 100 100">
-      <path d="M28,20 L33,8 L38,20 L43,6 L48,20 L53,6 L58,20 L63,6 L68,20 L73,8" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-      <path d="M20,32 L9,9 L29,23 Z" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/>
-      <path d="M80,32 L91,9 L71,23 Z" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/>
-      <circle cx="50" cy="54" r="34" fill="none" stroke="currentColor" stroke-width="4"/>
-      ${faceInner}
-      <ellipse cx="50" cy="68" rx="14" ry="9" fill="none" stroke="currentColor" stroke-width="3"/>
-      <circle cx="45" cy="68" r="1.8" fill="currentColor"/>
-      <circle cx="55" cy="68" r="1.8" fill="currentColor"/>
-    </svg>`;
-  }
-  function charBoarNeutral(){
-    return charBoarBase(`
-      <line class="focus-char-eye" x1="34" y1="48" x2="42" y2="48" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-      <line class="focus-char-eye" x1="58" y1="48" x2="66" y2="48" stroke="currentColor" stroke-width="3" stroke-linecap="round" style="animation-delay:0.15s;"/>
+  function charPigNeutral(){
+    return charPigBase(`
+      <line class="focus-char-eye" x1="34" y1="46" x2="42" y2="46" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+      <line class="focus-char-eye" x1="58" y1="46" x2="66" y2="46" stroke="currentColor" stroke-width="3" stroke-linecap="round" style="animation-delay:0.15s;"/>
     `);
   }
-  function charBoarHappy(){
-    return charBoarBase(`
-      <path d="M33,48 Q38,42 43,48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-      <path d="M57,48 Q62,42 67,48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-      <path d="M40,80 Q50,86 60,80" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+
+  function charPigHappy(){
+    return charPigBase(`
+      <path d="M33,46 Q38,40 43,46" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+      <path d="M57,46 Q62,40 67,46" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+      <path d="M40,76 Q50,83 60,76" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
     `);
   }
-  function charBoarFoul(){
-    return charBoarBase(`
-      <line x1="32" y1="44" x2="44" y2="49" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-      <line x1="68" y1="44" x2="56" y2="49" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-      <circle cx="38" cy="52" r="2.6" fill="currentColor"/>
-      <circle cx="62" cy="52" r="2.6" fill="currentColor"/>
-      <path d="M42,82 Q50,76 58,82" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+
+  function charPigFoul(){
+    return charPigBase(`
+      <line x1="32" y1="42" x2="44" y2="47" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+      <line x1="68" y1="42" x2="56" y2="47" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="38" cy="50" r="2.6" fill="currentColor"/>
+      <circle cx="62" cy="50" r="2.6" fill="currentColor"/>
+      <path d="M42,78 Q50,72 58,78" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
     `);
   }
 
   function poseMarkup(state){
-    if(state === 'happy') return charBoarHappy();
-    if(state === 'foul') return charBoarFoul();
-    return charBoarNeutral();
+    if(state === 'happy') return charPigHappy();
+    if(state === 'foul') return charPigFoul();
+    return charPigNeutral();
   }
 
   function charInnerHtml(){
@@ -935,6 +901,11 @@ ${lines || '(등록된 항목 없음)'}
   }
 
   async function startFocusSession(){
+    // 사용자 클릭 상호작용 지점에서 음성 오디오 엔진 잠금 해제
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.resume();
+    }
+
     focusModelLoading = true;
     render();
     try{
@@ -967,7 +938,6 @@ ${lines || '(등록된 항목 없음)'}
     const video = document.getElementById('focus-video');
     if(video){ video.srcObject = focusStream; video.play().catch(()=>{}); }
 
-    // Timer: simple, synchronous, can never be blocked by face-detection work.
     focusTimerInterval = setInterval(() => {
       focusElapsedSec += 1;
       const timerEl = document.getElementById('focus-timer-text');
@@ -975,8 +945,6 @@ ${lines || '(등록된 항목 없음)'}
       if(focusElapsedSec >= focusDurationMin*60) endFocusSession();
     }, 1000);
 
-    // Face detection: independent self-scheduling loop, so a slow/hung
-    // estimateFaces() call can never stall the timer above.
     scheduleFaceCheck();
   }
 
