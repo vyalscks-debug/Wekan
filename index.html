@@ -276,7 +276,7 @@
     try{ localStorage.setItem(key, value); }catch(e){ console.error('Save failed', e); }
   }
 
-  let data = { weeks: {}, categories: [], quotes: [], customCharacter: { base: null, good: null, foul: null } };
+  let data = { weeks: {}, categories: [], quotes: [] };
   let viewMonth = new Date(); viewMonth.setDate(1); viewMonth.setHours(0,0,0,0);
   let selectedWeekId = currentWeekId();
   let newItemCategory = DEFAULT_CATEGORIES[0];
@@ -312,6 +312,31 @@
   let focusTimerInterval = null;
   let focusFeedbackLine = '';
   let focusSessionSummary = null;
+  let voiceOn = true;
+  let koreanVoice = null;
+
+  function loadKoreanVoice(){
+    if(!('speechSynthesis' in window)) return;
+    const voices = window.speechSynthesis.getVoices();
+    koreanVoice = voices.find(v => v.lang && v.lang.startsWith('ko')) || null;
+  }
+  if('speechSynthesis' in window){
+    loadKoreanVoice();
+    window.speechSynthesis.onvoiceschanged = loadKoreanVoice;
+  }
+
+  function speak(text){
+    if(!voiceOn || !('speechSynthesis' in window) || !text) return;
+    try{
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'ko-KR';
+      if(koreanVoice) utter.voice = koreanVoice;
+      utter.pitch = 0.8;
+      utter.rate = 1.0;
+      window.speechSynthesis.speak(utter);
+    }catch(e){}
+  }
 
   const FOCUS_LINES_OK = ['좋아, 지금 아주 잘하고 있어.', '이대로 쭉 가자.', '집중력 좋은데?', '흐트러지지 마.'];
   const FOCUS_LINES_FOUL = ['어디 갔었어? 집중해!', '화면으로 다시 와.', '방금 딴 데 봤지?', '자리 비우지 마.'];
@@ -395,12 +420,11 @@ ${lines || '(등록된 항목 없음)'}
   async function load(){
     try{
       const raw = await storageGet(STORAGE_KEY);
-      data = raw ? JSON.parse(raw) : { weeks: {}, categories: [], quotes: [], customCharacter: { base: null, good: null, foul: null } };
-    }catch(e){ data = { weeks: {}, categories: [], quotes: [], customCharacter: { base: null, good: null, foul: null } }; }
+      data = raw ? JSON.parse(raw) : { weeks: {}, categories: [], quotes: [] };
+    }catch(e){ data = { weeks: {}, categories: [], quotes: [] }; }
     if(!data.weeks) data.weeks = {};
     if(!data.categories || !data.categories.length) data.categories = [...DEFAULT_CATEGORIES];
     if(!data.quotes) data.quotes = [];
-    if(!data.customCharacter) data.customCharacter = { base: null, good: null, foul: null };
     newItemCategory = data.categories[0];
 
     const nowId = currentWeekId();
@@ -419,6 +443,7 @@ ${lines || '(등록된 항목 없음)'}
     selectedWeekId = nowId;
 
     notifyOn = (await storageGet('weekly-notify-pref')) === 'on';
+    voiceOn = (await storageGet('weekly-voice-pref')) !== 'off';
     accountabilityPhone = (await storageGet('weekly-accountability-phone')) || '';
     theme = (await storageGet('weekly-theme-pref')) === 'dark' ? 'dark' : 'light';
     currentQuote = pickRandomQuote();
@@ -846,59 +871,9 @@ ${lines || '(등록된 항목 없음)'}
   }
 
   function poseMarkup(state){
-    const character = data.customCharacter || {};
-    if(state === 'happy' && character.good) return `<img src="${character.good}" alt="good" />`;
-    if(state === 'foul' && character.foul) return `<img src="${character.foul}" alt="foul" />`;
-    if(character.base) return `<img src="${character.base}" alt="character" />`;
     if(state === 'happy') return charBoarHappy();
     if(state === 'foul') return charBoarFoul();
     return charBoarNeutral();
-  }
-
-  function processCharacterImage(file){
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          // Cap the working size so three composited data URLs don't bloat storage.
-          const size = Math.min(320, Math.max(img.width, img.height));
-          const canvas = document.createElement('canvas');
-          canvas.width = size;
-          canvas.height = size;
-          const ctx = canvas.getContext('2d');
-
-          // 1. Base (as uploaded)
-          ctx.drawImage(img, 0, 0, size, size);
-          const baseData = canvas.toDataURL('image/jpeg', 0.85);
-
-          // 2. Good: blush + smiling-eye arcs composited on top
-          ctx.clearRect(0, 0, size, size);
-          ctx.drawImage(img, 0, 0, size, size);
-          ctx.fillStyle = 'rgba(255, 120, 150, 0.4)';
-          ctx.beginPath(); ctx.arc(size * 0.28, size * 0.58, size * 0.1, 0, Math.PI * 2); ctx.fill();
-          ctx.beginPath(); ctx.arc(size * 0.72, size * 0.58, size * 0.1, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = '#ff3366'; ctx.lineWidth = Math.max(4, size * 0.035); ctx.lineCap = 'round';
-          ctx.beginPath(); ctx.arc(size * 0.32, size * 0.42, size * 0.07, Math.PI, 0); ctx.stroke();
-          ctx.beginPath(); ctx.arc(size * 0.68, size * 0.42, size * 0.07, Math.PI, 0); ctx.stroke();
-          const goodData = canvas.toDataURL('image/jpeg', 0.85);
-
-          // 3. Foul: angry eyebrows + a sweat drop composited on top
-          ctx.clearRect(0, 0, size, size);
-          ctx.drawImage(img, 0, 0, size, size);
-          ctx.strokeStyle = '#ff2222'; ctx.lineWidth = Math.max(5, size * 0.045); ctx.lineCap = 'round';
-          ctx.beginPath(); ctx.moveTo(size * 0.2, size * 0.32); ctx.lineTo(size * 0.42, size * 0.42); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(size * 0.8, size * 0.32); ctx.lineTo(size * 0.58, size * 0.42); ctx.stroke();
-          ctx.fillStyle = '#3399ff';
-          ctx.beginPath(); ctx.arc(size * 0.82, size * 0.28, size * 0.05, 0, Math.PI * 2); ctx.fill();
-          const foulData = canvas.toDataURL('image/jpeg', 0.85);
-
-          resolve({ base: baseData, good: goodData, foul: foulData });
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
   }
 
   function charInnerHtml(){
@@ -922,11 +897,8 @@ ${lines || '(등록된 항목 없음)'}
     const charBlock = `
       <div class="focus-char" id="focus-char"><div class="focus-char-inner" id="focus-char-inner">${charInnerHtml()}</div></div>
       <div class="char-upload-row">
-        <label class="char-upload-label" for="char-base-input">📷 Upload your character</label>
-        <input type="file" id="char-base-input" accept="image/*" style="display:none;" />
-        ${data.customCharacter && data.customCharacter.base ? `<button class="quote-add-link" id="reset-char-btn">↺ Back to buddy</button>` : ''}
-      </div>
-      <p class="reminder-sub" style="text-align:center; margin-top:-6px;">One photo is enough — "Good" and "Foul" moods are generated automatically on top of it.</p>`;
+        <button class="reminder-btn${voiceOn ? '' : ' off'}" id="voice-toggle-btn">${voiceOn ? '🔊 Voice on' : '🔇 Voice off'}</button>
+      </div>`;
 
     if(!focusActive){
       const nowId = currentWeekId();
@@ -989,6 +961,7 @@ ${lines || '(등록된 항목 없음)'}
     foulCount = 0;
     consecutiveMissing = 0;
     focusFeedbackLine = '카메라 연결됐어. 시작한다.';
+    speak(focusFeedbackLine);
     render();
 
     const video = document.getElementById('focus-video');
@@ -1033,6 +1006,7 @@ ${lines || '(등록된 항목 없음)'}
       if(poseEl) poseEl.innerHTML = poseMarkup('neutral');
       if(focusedSec % 20 === 0){
         focusFeedbackLine = FOCUS_LINES_OK[Math.floor(Math.random()*FOCUS_LINES_OK.length)];
+        speak(focusFeedbackLine);
         const fb = document.getElementById('focus-feedback-text'); if(fb) fb.textContent = focusFeedbackLine;
         if(poseEl) poseEl.innerHTML = poseMarkup('happy');
         setTimeout(() => {
@@ -1045,6 +1019,7 @@ ${lines || '(등록된 항목 없음)'}
       if(consecutiveMissing === 3){
         foulCount += 1;
         focusFeedbackLine = FOCUS_LINES_FOUL[Math.floor(Math.random()*FOCUS_LINES_FOUL.length)];
+        speak(focusFeedbackLine);
         const fb = document.getElementById('focus-feedback-text'); if(fb) fb.textContent = focusFeedbackLine;
         if(poseEl) poseEl.innerHTML = poseMarkup('foul');
         if(charEl){ charEl.classList.remove('shake'); void charEl.offsetWidth; charEl.classList.add('shake'); }
@@ -1400,6 +1375,16 @@ ${lines || '(등록된 항목 없음)'}
   }
 
   function bindFocusEvents(){
+    const voiceBtn = document.getElementById('voice-toggle-btn');
+    if(voiceBtn){
+      voiceBtn.addEventListener('click', async () => {
+        voiceOn = !voiceOn;
+        if(!voiceOn && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+        await storageSet('weekly-voice-pref', voiceOn ? 'on' : 'off');
+        render();
+      });
+    }
+
     const itemSelect = document.getElementById('focus-item-select');
     if(itemSelect){
       itemSelect.addEventListener('change', () => { focusSelectedItemId = itemSelect.value || null; });
@@ -1435,26 +1420,6 @@ ${lines || '(등록된 항목 없음)'}
       });
     }
   }
-
-  // Delegated listeners for the character upload — attached once, so they
-  // keep working even though the Focus tab's DOM gets rebuilt on every render().
-  document.addEventListener('change', async function(e){
-    if(e.target && e.target.id === 'char-base-input'){
-      const file = e.target.files[0];
-      if(!file) return;
-      const poses = await processCharacterImage(file);
-      data.customCharacter = poses;
-      await save();
-      render();
-    }
-  });
-  document.addEventListener('click', async function(e){
-    if(e.target && e.target.id === 'reset-char-btn'){
-      data.customCharacter = { base: null, good: null, foul: null };
-      await save();
-      render();
-    }
-  });
 
   load();
 })();
