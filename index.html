@@ -248,7 +248,8 @@
     return key.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   }
   function allIconKeys(){
-    return ICON_KEYS.concat(data.customIconKeys || []);
+    const hidden = data.hiddenIconKeys || [];
+    return ICON_KEYS.filter(k => !hidden.includes(k)).concat(data.customIconKeys || []);
   }
 
   function dkeyFromDate(d){
@@ -285,13 +286,14 @@
 
   // Each item is a one-time logged action tied to the date it was added.
   // Adding = logging it (instantly counted). Deleting = the only undo.
-  let data = { items: [], voiceClips: {}, comments: {}, customIconKeys: [] };
+  let data = { items: [], voiceClips: {}, comments: {}, customIconKeys: [], hiddenIconKeys: [] };
   let theme = 'light';
   let activeTab = 'today';
   let newItemIcon = ICON_KEYS[0];
   let newItemType = 'plan';
   let newItemText = '';
   let iconSearchError = '';
+  let showIconSearch = false;
   let progressMonth = new Date(); progressMonth.setDate(1);
   let selectedProgressDay = null;
 
@@ -405,12 +407,13 @@
   async function load(){
     try{
       const raw = await storageGet(STORAGE_KEY);
-      data = raw ? JSON.parse(raw) : { items: [], voiceClips: {}, comments: {}, customIconKeys: [] };
-    }catch(e){ data = { items: [], voiceClips: {}, comments: {}, customIconKeys: [] }; }
+      data = raw ? JSON.parse(raw) : { items: [], voiceClips: {}, comments: {}, customIconKeys: [], hiddenIconKeys: [] };
+    }catch(e){ data = { items: [], voiceClips: {}, comments: {}, customIconKeys: [], hiddenIconKeys: [] }; }
     if(!data.items) data.items = [];
     if(!data.voiceClips) data.voiceClips = {};
     if(!data.comments) data.comments = {};
     if(!data.customIconKeys) data.customIconKeys = [];
+    if(!data.hiddenIconKeys) data.hiddenIconKeys = [];
 
     theme = (await storageGet('daily-theme-pref')) === 'dark' ? 'dark' : 'light';
     voiceOn = (await storageGet('daily-voice-pref')) !== 'off';
@@ -446,9 +449,10 @@
       <button class="cat-pill${newItemType==='plan'?' active':''}" data-itemtype="plan">− Drain</button>
       <button class="cat-pill${newItemType==='heal'?' active':''}" data-itemtype="heal">+ Charge</button>`;
 
-    const iconPickerHtml = allIconKeys().map(key => `
-      <button class="icon-pill${key===newItemIcon?' active':''}" data-iconkey="${key}" title="${escapeHtml(labelForIcon(key))}">${iconMarkup(key)}</button>
-    `).join('');
+    const iconPickerHtml = allIconKeys().map(key => {
+      const btn = `<button class="icon-pill${key===newItemIcon?' active':''}" data-iconkey="${key}" title="${escapeHtml(labelForIcon(key))}">${iconMarkup(key)}</button>`;
+      return `<span class="icon-pill-wrap">${btn}<button class="icon-pill-remove" data-removeicon="${key}" title="Remove">×</button></span>`;
+    }).join('');
 
     return `
       <h1 class="date-title">${todayLabel()}</h1>
@@ -460,15 +464,18 @@
         <div class="type-picker">${typePickerHtml}</div>
         <div class="picker-label">Icon</div>
         <div class="icon-picker">${iconPickerHtml}</div>
-        <div class="add-row" style="margin-bottom:6px;">
-          <input class="add-input" id="icon-search-input" type="text" placeholder="Search more icons (e.g. bath)" />
-          <button class="add-submit-btn" id="icon-search-btn">Find</button>
-        </div>
-        ${iconSearchError ? `<p class="reminder-sub" style="text-align:left; color:var(--ink); margin-top:0; margin-bottom:12px;">${escapeHtml(iconSearchError)}</p>` : `<p class="reminder-sub" style="text-align:left; margin-top:0; margin-bottom:12px;">Searches the free Lucide icon set — thousands of options.</p>`}
+        ${showIconSearch ? `
+          <div class="add-row" style="margin-bottom:6px;">
+            <input class="add-input" id="icon-search-input" type="text" placeholder="Search more icons (e.g. bath)" />
+            <button class="add-submit-btn" id="icon-search-btn">Find</button>
+          </div>
+          ${iconSearchError ? `<p class="reminder-sub" style="text-align:left; color:var(--ink); margin-top:0; margin-bottom:12px;">${escapeHtml(iconSearchError)}</p>` : ''}
+        ` : `<button class="quote-add-link" id="show-icon-search-btn" style="margin-bottom:16px;">+ search more icons</button>`}
+        ${(data.hiddenIconKeys || []).length ? `<button class="quote-add-link" id="restore-icons-btn" style="margin-left:10px; margin-bottom:16px;">↺ restore removed icons</button>` : ''}
         <div class="add-row">
           <span class="add-icon-preview">${iconMarkup(newItemIcon)}</span>
           <input class="add-input" id="add-input" type="text" placeholder="Name (optional)" value="${escapeHtml(newItemText)}" />
-          <button class="add-submit-btn" id="add-btn">Add</button>
+          <button class="add-submit-btn big" id="add-btn">Add</button>
         </div>
       </div>
       <div class="comment-block">
@@ -905,6 +912,40 @@
     }
     const iconSearchBtn = document.getElementById('icon-search-btn');
     if(iconSearchBtn){ iconSearchBtn.addEventListener('click', submitIconSearch); }
+
+    const showSearchBtn = document.getElementById('show-icon-search-btn');
+    if(showSearchBtn){
+      showSearchBtn.addEventListener('click', () => {
+        showIconSearch = true;
+        render();
+        const input = document.getElementById('icon-search-input'); if(input) input.focus();
+      });
+    }
+
+    root.querySelectorAll('[data-removeicon]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const key = btn.dataset.removeicon;
+        if(ICON_KEYS.includes(key)){
+          if(!data.hiddenIconKeys.includes(key)) data.hiddenIconKeys.push(key);
+        }else{
+          data.customIconKeys = (data.customIconKeys || []).filter(k => k !== key);
+          delete iconCache[key];
+        }
+        if(newItemIcon === key) newItemIcon = allIconKeys().find(k => k !== key) || ICON_KEYS[0];
+        await save();
+        render();
+      });
+    });
+
+    const restoreIconsBtn = document.getElementById('restore-icons-btn');
+    if(restoreIconsBtn){
+      restoreIconsBtn.addEventListener('click', async () => {
+        data.hiddenIconKeys = [];
+        await save();
+        render();
+      });
+    }
 
     const commentArea = document.getElementById('comment-textarea');
     if(commentArea){
