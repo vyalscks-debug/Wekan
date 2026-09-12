@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
   :root{
     --ink:#111111; --paper:#ffffff; --muted:#9a9a9a; --faint:#d8d8d8;
@@ -45,16 +45,12 @@
   .item{ display:flex; align-items:center; gap:10px; padding:13px 2px; border-bottom:1px solid var(--divider); }
   .item-icon{ flex:none; width:18px; height:18px; color:var(--ink); }
   .item-icon svg{ width:100%; height:100%; }
-  
-  /* Type Pill Styling Update */
   .type-pill{
-    flex:none; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700;
-    padding:4px 9px; border-radius:12px; border:1.5px solid var(--ink); white-space:nowrap;
-    display:inline-flex; align-items:center; gap:3px;
+    flex:none; font-family:'JetBrains Mono', monospace; font-size:10.5px; font-weight:700;
+    padding:3px 8px; border-radius:10px; border:1.3px solid var(--ink); color:var(--ink); background:transparent;
+    white-space:nowrap;
   }
-  .type-pill.charging{ background:var(--ink); color:var(--paper); }
-  .type-pill.plan{ background:transparent; color:var(--ink); }
-
+  .type-pill.plan{ background:var(--ink); color:var(--paper); }
   .item-text{ flex:1; font-size:15.5px; line-height:1.4; word-break:break-word; }
   .del-btn{ flex:none; width:20px; height:20px; border:none; background:none; color:var(--muted); font-size:16px; cursor:pointer; line-height:1; }
   .del-btn:hover{ color:var(--ink); }
@@ -62,10 +58,17 @@
   .item-empty{ padding:26px 2px; color:var(--muted); font-size:14px; text-align:center; }
 
   .add-block{ margin-top:18px; padding-top:18px; border-top:1px solid var(--ink); }
+  .comment-block{ margin-top:24px; }
+  .comment-textarea{
+    width:100%; min-height:72px; border:1.3px solid var(--ink); border-radius:10px;
+    padding:12px; font-family:'Inter', sans-serif; font-size:14px; line-height:1.5;
+    color:var(--ink); background:var(--paper); resize:vertical; outline:none;
+  }
+  .comment-textarea::placeholder{ color:var(--muted); }
   .picker-label{ font-family:'JetBrains Mono', monospace; font-size:9.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
-  .cat-pill{ border:1.5px solid var(--ink); background:var(--paper); color:var(--ink); font-family:'JetBrains Mono', monospace; font-size:11.5px; font-weight:700; padding:6px 14px; border-radius:14px; cursor:pointer; white-space:nowrap; }
+  .cat-pill{ border:1.3px solid var(--ink); background:var(--paper); color:var(--ink); font-family:'JetBrains Mono', monospace; font-size:11px; padding:6px 12px; border-radius:14px; cursor:pointer; white-space:nowrap; }
   .cat-pill.active{ background:var(--ink); color:var(--paper); }
-  .type-picker{ display:flex; gap:8px; margin-bottom:16px; }
+  .type-picker{ display:flex; gap:6px; margin-bottom:16px; }
 
   .icon-picker{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
   .icon-pill{
@@ -74,6 +77,12 @@
   }
   .icon-pill svg{ width:100%; height:100%; }
   .icon-pill.active{ background:var(--ink); color:var(--paper); }
+  .icon-pill-wrap{ position:relative; flex:none; }
+  .icon-pill-remove{
+    position:absolute; top:-5px; right:-5px; width:14px; height:14px; border-radius:50%;
+    background:var(--ink); color:var(--paper); border:1px solid var(--paper); font-size:9px;
+    line-height:12px; text-align:center; cursor:pointer; padding:0;
+  }
 
   .add-row{ display:flex; align-items:center; gap:10px; }
   .add-icon-preview{ flex:none; width:17px; height:17px; color:var(--ink); }
@@ -81,6 +90,7 @@
   .add-input{ flex:1; border:none; outline:none; font-family:'Inter', sans-serif; font-size:15px; background:transparent; color:var(--ink); border-bottom:1.3px solid var(--ink); padding-bottom:6px; }
   .add-input::placeholder{ color:var(--muted); }
   .add-submit-btn{ flex:none; border:1px solid var(--ink); background:var(--ink); color:var(--paper); font-family:'JetBrains Mono', monospace; font-size:11px; padding:9px 16px; border-radius:16px; cursor:pointer; }
+  .add-submit-btn.big{ font-size:13px; padding:12px 22px; border-radius:18px; }
   .add-submit-btn:hover{ opacity:0.85; }
   .add-submit-btn[disabled]{ opacity:0.5; cursor:default; }
 
@@ -88,15 +98,11 @@
   .balance-banner .label{ font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
   .balance-banner .value{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:40px; letter-spacing:-0.01em; }
   .balance-banner .note{ font-size:12.5px; color:var(--muted); margin-top:6px; line-height:1.5; }
+  .sub-counts{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--muted); }
 
-  /* Monthly Summary Box */
-  .monthly-summary-box{
-    display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;
-    border:1px solid var(--ink); border-radius:10px; padding:14px 10px; margin-bottom:18px;
-    text-align:center; background:var(--hover);
-  }
-  .monthly-stat-item .m-label{ display:block; font-family:'JetBrains Mono', monospace; font-size:9.5px; color:var(--muted); margin-bottom:4px; text-transform:uppercase; }
-  .monthly-stat-item .m-val{ font-family:'Space Grotesk', sans-serif; font-size:18px; font-weight:700; }
+  .streak-row{ display:flex; align-items:baseline; gap:8px; margin:18px 0 22px; }
+  .streak-value{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:20px; }
+  .streak-label{ font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--muted); }
 
   .section-title{ font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); margin:0 0 14px; }
   .month-nav{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
@@ -106,7 +112,16 @@
   .month-weekday-row{ display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:6px; }
   .month-weekday-cell{ text-align:center; font-family:'JetBrains Mono', monospace; font-size:9px; color:var(--muted); }
   .month-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
-  .month-cell{ display:flex; flex-direction:column; align-items:center; gap:3px; padding:4px 0; }
+  .month-cell{ display:flex; flex-direction:column; align-items:center; gap:3px; padding:4px 0; border-radius:6px; cursor:pointer; }
+  .month-cell:hover{ background:var(--hover); }
+  .month-cell.selected{ background:var(--band); }
+  .day-detail{ margin-top:18px; border:1px solid var(--ink); border-radius:10px; padding:16px; }
+  .day-detail-title{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:15px; margin-bottom:10px; }
+  .day-detail-item{ display:flex; align-items:center; gap:8px; padding:6px 0; font-size:13.5px; }
+  .day-detail-icon{ flex:none; width:16px; height:16px; color:var(--ink); }
+  .day-detail-icon svg{ width:100%; height:100%; }
+  .day-detail-comment{ margin-top:10px; padding-top:10px; border-top:1px solid var(--divider); font-size:13.5px; line-height:1.5; color:var(--ink); white-space:pre-wrap; }
+  .day-detail-empty{ color:var(--muted); font-size:13px; }
   .month-daynum{ font-family:'JetBrains Mono', monospace; font-size:9.5px; color:var(--muted); }
   .month-dot{ width:8px; height:8px; border-radius:50%; border:1.2px solid var(--faint); }
   .month-dot.positive{ background:var(--ink); border-color:var(--ink); }
@@ -178,17 +193,62 @@
     pill:   '<rect x="4" y="9.5" width="16" height="6.5" rx="3.25" transform="rotate(-35 12 12.75)" fill="none" stroke="currentColor" stroke-width="2"/><line x1="12" y1="9.5" x2="12" y2="16" transform="rotate(-35 12 12.75)" stroke="currentColor" stroke-width="2"/>',
     pencil: '<path d="M4 20l1-4.2L15.3 5.4l2.9 2.9L7.9 18.6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><path d="M13.6 7.1l2.9 2.9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
     coffee: '<path d="M5 10h12v6a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M17 11.5h1.3a2.3 2.3 0 0 1 0 4.6H17" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 7c0-1 1-1 1-2M12 7c0-1 1-1 1-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
-    alarm:  '<circle cx="12" cy="13.5" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 9.5v4l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.2 6l2.3 2M18.8 6l-2.3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+    alarm:  '<circle cx="12" cy="13.5" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 9.5v4l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.2 6l2.3 2M18.8 6l-2.3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    bike:   '<circle cx="6" cy="17" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="17" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 17l4-9h4l4 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><path d="M10 8h3M6 17l6-5 4 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>',
+    walk:   '<ellipse cx="8" cy="7" rx="2.2" ry="3" fill="currentColor"/><ellipse cx="16" cy="15" rx="2.2" ry="3" fill="currentColor"/><circle cx="8" cy="12.5" r="1.3" fill="currentColor"/><circle cx="16" cy="20.5" r="1.3" fill="currentColor"/>',
+    water:  '<path d="M12 3s7 7.5 7 12a7 7 0 0 1-14 0c0-4.5 7-12 7-12z" fill="currentColor"/>',
+    phone:  '<rect x="7" y="2" width="10" height="20" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><line x1="10" y1="19" x2="14" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    game:   '<rect x="2" y="9" width="20" height="9" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><line x1="7" y1="11.5" x2="7" y2="15.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="13.5" x2="9" y2="13.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="12.5" r="1.1" fill="currentColor"/><circle cx="18.5" cy="15" r="1.1" fill="currentColor"/>',
+    bag:    '<path d="M6 8h12l-1 13H7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 8V6a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="2"/>',
+    plant:  '<path d="M12 21V11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 11c0-4-3-6-7-6 0 4 3 7 7 6z" fill="currentColor"/><path d="M12 14c0-3.5 2.5-5.5 6-5.5 0 3.5-2.5 6-6 5.5z" fill="currentColor"/>',
+    call:   '<path d="M6.6 10.8c1.5 2.9 3.9 5.3 6.8 6.8l2.3-2.3c.3-.3.7-.4 1.1-.3 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.5 21 3 13.5 3 4.5c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.3 1.1z" fill="currentColor"/>',
+    heart:  '<path d="M12 20s-6.5-4-9-8c-1.5-2.5 0-6 3-6 2 0 4 1.5 6 4 2-2.5 4-4 6-4 3 0 4.5 3.5 3 6-2.5 4-9 8-9 8z" fill="currentColor"/>',
+    users:  '<circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17" cy="9" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2 20c0-3.5 2.5-6 6-6s6 2.5 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14.5 14.5c2.5 0 5 2 5.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    car:    '<path d="M4 16V11l2-5h12l2 5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><line x1="4" y1="16" x2="20" y2="16" stroke="currentColor" stroke-width="2"/><circle cx="7.5" cy="16.5" r="1.8" fill="currentColor"/><circle cx="16.5" cy="16.5" r="1.8" fill="currentColor"/>',
+    tv:     '<rect x="3" y="6" width="18" height="12" rx="1.6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 21h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    shirt:  '<path d="M8 4l4 2 4-2 4 4-3 3v11H7V11L4 8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>'
+  };
+  const ICON_NAMES = {
+    run:'dumbbell', book:'book-open', cook:'cooking-pot', music:'music', sleep:'bed',
+    brief:'briefcase', brush:'palette', broom:'broom', pill:'pill', pencil:'pencil',
+    coffee:'coffee', alarm:'alarm-clock', bike:'bike', walk:'footprints', water:'droplet',
+    phone:'smartphone', game:'gamepad-2', bag:'shopping-bag', plant:'sprout', call:'phone-call',
+    heart:'heart', users:'users', car:'car', tv:'tv', shirt:'shirt'
   };
   const ICON_KEYS = Object.keys(ICON_DEFS);
   const ICON_LABELS = {
     run:'Exercise', book:'Study', cook:'Cooking', music:'Music', sleep:'Sleep',
     brief:'Work', brush:'Hobby', broom:'Chores', pill:'Medicine', pencil:'Journal',
-    coffee:'Break', alarm:'Wake up'
+    coffee:'Break', alarm:'Wake up', bike:'Cycling', walk:'Walk', water:'Water',
+    phone:'Screen time', game:'Gaming', bag:'Shopping', plant:'Garden', call:'Call a friend',
+    heart:'Self-care', users:'Hang out', car:'Commute', tv:'Watch something', shirt:'Laundry'
   };
+
+  const iconCache = {};
+  async function fetchIconSilent(key){
+    const name = ICON_NAMES[key] || key;
+    try{
+      const res = await fetch(`https://cdn.jsdelivr.net/npm/lucide-static@0.503.0/icons/${name}.svg`);
+      if(!res.ok) throw new Error('not found');
+      const text = await res.text();
+      iconCache[key] = text;
+      return true;
+    }catch(e){
+      iconCache[key] = null; // stay on hand-drawn fallback (built-ins only)
+      return false;
+    }
+  }
   function iconMarkup(key){
+    if(iconCache[key]) return iconCache[key];
     const inner = ICON_DEFS[key] || ICON_DEFS.run;
     return `<svg viewBox="0 0 24 24">${inner}</svg>`;
+  }
+  function labelForIcon(key){
+    if(ICON_LABELS[key]) return ICON_LABELS[key];
+    return key.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+  function allIconKeys(){
+    return ICON_KEYS.concat(data.customIconKeys || []);
   }
 
   function dkeyFromDate(d){
@@ -223,13 +283,17 @@
     try{ localStorage.setItem(key, value); }catch(e){ console.error('Save failed', e); }
   }
 
-  let data = { items: [], voiceClips: {} };
+  // Each item is a one-time logged action tied to the date it was added.
+  // Adding = logging it (instantly counted). Deleting = the only undo.
+  let data = { items: [], voiceClips: {}, comments: {}, customIconKeys: [] };
   let theme = 'light';
   let activeTab = 'today';
   let newItemIcon = ICON_KEYS[0];
   let newItemType = 'plan';
   let newItemText = '';
+  let iconSearchError = '';
   let progressMonth = new Date(); progressMonth.setDate(1);
+  let selectedProgressDay = null;
 
   // ---- Focus session state ----
   let focusActive = false;
@@ -308,6 +372,27 @@
 
   function todayItems(){ return data.items.filter(it => it.date === todayKey()); }
 
+  function dayNet(dateKey){
+    return data.items
+      .filter(it => it.date === dateKey)
+      .reduce((sum, it) => sum + (it.type === 'heal' ? 1 : -1), 0);
+  }
+
+  function currentStreak(){
+    let streak = 0;
+    let cursor = new Date();
+    while(true){
+      const key = dkeyFromDate(cursor);
+      const dayItems = data.items.filter(it => it.date === key);
+      if(dayItems.length === 0) break;
+      const net = dayItems.reduce((s, it) => s + (it.type === 'heal' ? 1 : -1), 0);
+      if(net < 0) break;
+      streak += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+  }
+
   function totalBalance(){
     let balance = 0, healDone = 0, planDone = 0;
     data.items.forEach(it => {
@@ -317,48 +402,30 @@
     return { balance, healDone, planDone };
   }
 
-  function monthlyStats(targetMonth){
-    const year = targetMonth.getFullYear();
-    const month = targetMonth.getMonth();
-    let chargingCount = 0;
-    let planCount = 0;
-
-    data.items.forEach(it => {
-      if(!it.date) return;
-      const parts = it.date.split('-');
-      if(parts.length === 3){
-        const itemYear = parseInt(parts[0], 10);
-        const itemMonth = parseInt(parts[1], 10) - 1;
-        if(itemYear === year && itemMonth === month){
-          if(it.type === 'heal') chargingCount++;
-          else planCount++;
-        }
-      }
-    });
-    return { chargingCount, planCount, net: chargingCount - planCount };
-  }
-
   async function load(){
     try{
       const raw = await storageGet(STORAGE_KEY);
-      data = raw ? JSON.parse(raw) : { items: [], voiceClips: {} };
-    }catch(e){ data = { items: [], voiceClips: {} }; }
+      data = raw ? JSON.parse(raw) : { items: [], voiceClips: {}, comments: {}, customIconKeys: [] };
+    }catch(e){ data = { items: [], voiceClips: {}, comments: {}, customIconKeys: [] }; }
     if(!data.items) data.items = [];
     if(!data.voiceClips) data.voiceClips = {};
+    if(!data.comments) data.comments = {};
+    if(!data.customIconKeys) data.customIconKeys = [];
 
     theme = (await storageGet('daily-theme-pref')) === 'dark' ? 'dark' : 'light';
     voiceOn = (await storageGet('daily-voice-pref')) !== 'off';
     blurCamera = (await storageGet('daily-blur-pref')) !== 'off';
+
+    await Promise.all(allIconKeys().map(k => fetchIconSilent(k)));
     render();
   }
 
   async function save(){ await storageSet(STORAGE_KEY, JSON.stringify(data)); }
 
   function typePillMarkup(type){
-    if(type === 'heal'){
-      return `<span class="type-pill charging">+1 Charging</span>`;
-    }
-    return `<span class="type-pill plan">−1 Plan</span>`;
+    const n = type === 'heal' ? '+1' : '−1';
+    const word = type === 'heal' ? 'Charge' : 'Drain';
+    return `<span class="type-pill${type==='plan'?' plan':''}">${word} ${n}</span>`;
   }
 
   function renderTodayTab(){
@@ -376,11 +443,11 @@
       : `<li class="item-empty">Nothing logged yet today. Add something below.</li>`;
 
     const typePickerHtml = `
-      <button class="cat-pill${newItemType==='plan'?' active':''}" data-itemtype="plan">−1 Plan</button>
-      <button class="cat-pill${newItemType==='heal'?' active':''}" data-itemtype="heal">+1 Charging</button>`;
+      <button class="cat-pill${newItemType==='plan'?' active':''}" data-itemtype="plan">− Drain</button>
+      <button class="cat-pill${newItemType==='heal'?' active':''}" data-itemtype="heal">+ Charge</button>`;
 
-    const iconPickerHtml = ICON_KEYS.map(key => `
-      <button class="icon-pill${key===newItemIcon?' active':''}" data-iconkey="${key}">${iconMarkup(key)}</button>
+    const iconPickerHtml = allIconKeys().map(key => `
+      <button class="icon-pill${key===newItemIcon?' active':''}" data-iconkey="${key}" title="${escapeHtml(labelForIcon(key))}">${iconMarkup(key)}</button>
     `).join('');
 
     return `
@@ -393,31 +460,41 @@
         <div class="type-picker">${typePickerHtml}</div>
         <div class="picker-label">Icon</div>
         <div class="icon-picker">${iconPickerHtml}</div>
+        <div class="add-row" style="margin-bottom:6px;">
+          <input class="add-input" id="icon-search-input" type="text" placeholder="Search more icons (e.g. bath)" />
+          <button class="add-submit-btn" id="icon-search-btn">Find</button>
+        </div>
+        ${iconSearchError ? `<p class="reminder-sub" style="text-align:left; color:var(--ink); margin-top:0; margin-bottom:12px;">${escapeHtml(iconSearchError)}</p>` : `<p class="reminder-sub" style="text-align:left; margin-top:0; margin-bottom:12px;">Searches the free Lucide icon set — thousands of options.</p>`}
         <div class="add-row">
           <span class="add-icon-preview">${iconMarkup(newItemIcon)}</span>
           <input class="add-input" id="add-input" type="text" placeholder="Name (optional)" value="${escapeHtml(newItemText)}" />
           <button class="add-submit-btn" id="add-btn">Add</button>
         </div>
       </div>
+      <div class="comment-block">
+        <div class="picker-label">Today's note</div>
+        <textarea class="comment-textarea" id="comment-textarea" placeholder="How did today go?">${escapeHtml(data.comments[todayKey()] || '')}</textarea>
+      </div>
     `;
   }
 
   function renderProgressTab(){
     const { balance, healDone, planDone } = totalBalance();
-    const mStats = monthlyStats(progressMonth);
-    const monthName = MONTHS_FULL[progressMonth.getMonth()];
-    const year = progressMonth.getFullYear();
+    const note = balance >= 0
+      ? 'You have credit to spend on Drain items.'
+      : "You're in debt — do some Charge items to charge back up.";
+    const streak = currentStreak();
 
-    const yearNum = progressMonth.getFullYear(), monthNum = progressMonth.getMonth();
-    const firstDay = new Date(yearNum, monthNum, 1);
-    const daysInMonth = new Date(yearNum, monthNum+1, 0).getDate();
+    const year = progressMonth.getFullYear(), month = progressMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const daysInMonth = new Date(year, month+1, 0).getDate();
     const startWeekday = firstDay.getDay();
     const todayStr = todayKey();
 
     let cellsHtml = '';
     for(let i = 0; i < startWeekday; i++){ cellsHtml += `<div class="month-cell"></div>`; }
     for(let d = 1; d <= daysInMonth; d++){
-      const cellDate = new Date(yearNum, monthNum, d);
+      const cellDate = new Date(year, month, d);
       const key = dkeyFromDate(cellDate);
       const dayItems = data.items.filter(it => it.date === key);
       let dotClass = '';
@@ -426,8 +503,9 @@
         dotClass = net >= 0 ? 'positive' : 'negative';
       }
       const isToday = key === todayStr ? ' today' : '';
+      const isSelected = key === selectedProgressDay ? ' selected' : '';
       cellsHtml += `
-        <div class="month-cell${isToday}">
+        <div class="month-cell${isToday}${isSelected}" data-daykey="${key}">
           <span class="month-daynum">${d}</span>
           <span class="month-dot ${dotClass}"></span>
         </div>`;
@@ -435,36 +513,51 @@
 
     const weekdayRowHtml = DAY_NAMES_SHORT.map(w => `<div class="month-weekday-cell">${w[0]}</div>`).join('');
 
+    let dayDetailHtml = '';
+    if(selectedProgressDay){
+      const dItems = data.items.filter(it => it.date === selectedProgressDay);
+      const dComment = data.comments[selectedProgressDay];
+      const [yy,mm,dd] = selectedProgressDay.split('-').map(Number);
+      const labelDate = new Date(yy, mm-1, dd);
+      const dateLabel = `${DAY_NAMES_SHORT[labelDate.getDay()]}, ${MONTHS_SHORT[mm-1]} ${dd}`;
+      const itemsHtml = dItems.length
+        ? dItems.map(it => `
+            <div class="day-detail-item">
+              <span class="day-detail-icon">${iconMarkup(it.icon)}</span>
+              ${typePillMarkup(it.type)}
+              <span>${escapeHtml(it.text)}</span>
+            </div>`).join('')
+        : `<p class="day-detail-empty">Nothing logged this day.</p>`;
+      const commentHtml = dComment
+        ? `<div class="day-detail-comment">${escapeHtml(dComment)}</div>`
+        : '';
+      dayDetailHtml = `
+        <div class="day-detail">
+          <div class="day-detail-title">${dateLabel}</div>
+          ${itemsHtml}
+          ${commentHtml}
+        </div>`;
+    }
+
     return `
       <div class="balance-banner">
-        <div class="label">Total Balance</div>
+        <div class="label">Remaining +</div>
         <div class="value">${balance >= 0 ? '+' : ''}${balance}</div>
-        <div class="note">All-time Charging: +${healDone} · Plan: -${planDone}</div>
+        <div class="note">${note}</div>
       </div>
-
+      <p class="sub-counts">Charge done: ${healDone} · Drain done: ${planDone} (all-time)</p>
+      <div class="streak-row">
+        <span class="streak-value">${streak}</span>
+        <span class="streak-label">day${streak===1?'':'s'} in the green</span>
+      </div>
       <div class="month-nav">
         <button class="nav-btn" id="progress-prev-month">‹</button>
-        <span class="month-nav-title">${monthName} ${year}</span>
+        <span class="month-nav-title">${MONTHS_FULL[month]} ${year}</span>
         <button class="nav-btn" id="progress-next-month">›</button>
       </div>
-
-      <div class="monthly-summary-box">
-        <div class="monthly-stat-item">
-          <span class="m-label">+1 Charging</span>
-          <span class="m-val">+${mStats.chargingCount}</span>
-        </div>
-        <div class="monthly-stat-item">
-          <span class="m-label">−1 Plan</span>
-          <span class="m-val">-${mStats.planCount}</span>
-        </div>
-        <div class="monthly-stat-item">
-          <span class="m-label">Monthly Net</span>
-          <span class="m-val">${mStats.net >= 0 ? '+' : ''}${mStats.net}</span>
-        </div>
-      </div>
-
       <div class="month-weekday-row">${weekdayRowHtml}</div>
       <div class="month-grid">${cellsHtml}</div>
+      ${dayDetailHtml}
     `;
   }
 
@@ -519,7 +612,7 @@
         <div class="focus-summary-card">
           <div class="focus-summary-big">${formatMMSS(s.focusedSec)} <span style="font-size:15px; color:var(--muted); font-weight:500;">focused</span></div>
           <p class="reminder-sub" style="text-align:left; margin-top:2px;">${formatMMSS(s.totalSec)} total session · ${s.foulCount} time${s.foulCount===1?'':'s'} you left the frame</p>
-          <p style="margin-top:14px; font-size:13.5px;">${s.logged ? `Logged "${escapeHtml(s.logText)}" for today.` : (s.hadLog ? `Didn't log it — you weren't in frame enough (need ${s.thresholdPct}%+).` : 'No activity was linked to this session.')}</p>
+          <p style="margin-top:14px; font-size:13.5px;">${s.logged ? `✓ Logged "${escapeHtml(s.logText)}" for today.` : (s.hadLog ? `Didn't log it — you weren't in frame enough (need ${s.thresholdPct}%+).` : 'No activity was linked to this session.')}</p>
         </div>
         <button class="add-submit-btn" id="focus-dismiss-btn" style="margin-top:16px;">Start another session</button>
       `;
@@ -531,7 +624,7 @@
       return `
         <div class="char-slot-col">
           ${has
-            ? `<button class="quote-add-link" data-removevoice="${cat}">${label} · remove</button>`
+            ? `<button class="quote-add-link" data-removevoice="${cat}">✓ ${label} · remove</button>`
             : `<label class="quote-add-link" for="voice-input-${cat}">+ ${label} clip</label>`}
           <input type="file" class="voice-clip-input" id="voice-input-${cat}" data-cat="${cat}" accept="audio/*" style="display:none;" />
         </div>`;
@@ -546,12 +639,12 @@
       <p class="reminder-sub">Upload short recordings for each moment — any that aren't uploaded fall back to the built-in voice.</p>`;
 
     if(!focusActive){
-      const logIconPickerHtml = ICON_KEYS.map(key => `
+      const logIconPickerHtml = allIconKeys().map(key => `
         <button class="icon-pill${key===focusLogIcon?' active':''}" data-focuslogicon="${key}">${iconMarkup(key)}</button>
       `).join('');
       const logTypePickerHtml = `
-        <button class="cat-pill${focusLogType==='plan'?' active':''}" data-focuslogtype="plan">−1 Plan</button>
-        <button class="cat-pill${focusLogType==='heal'?' active':''}" data-focuslogtype="heal">+1 Charging</button>`;
+        <button class="cat-pill${focusLogType==='plan'?' active':''}" data-focuslogtype="plan">− Drain</button>
+        <button class="cat-pill${focusLogType==='heal'?' active':''}" data-focuslogtype="heal">+ Charge</button>`;
 
       return `
         <p class="section-title">Focus session</p>
@@ -780,6 +873,46 @@
     }
     const addBtn = document.getElementById('add-btn');
     if(addBtn){ addBtn.addEventListener('click', submitItem); }
+
+    async function submitIconSearch(){
+      const searchInput = document.getElementById('icon-search-input');
+      const raw = searchInput ? searchInput.value.trim().toLowerCase().replace(/\s+/g, '-') : '';
+      if(!raw) return;
+      iconSearchError = '';
+      if(allIconKeys().includes(raw)){
+        newItemIcon = raw;
+        if(searchInput) searchInput.value = '';
+        render();
+        return;
+      }
+      const searchBtn = document.getElementById('icon-search-btn');
+      if(searchBtn){ searchBtn.textContent = '…'; searchBtn.disabled = true; }
+      const ok = await fetchIconSilent(raw);
+      if(ok){
+        data.customIconKeys.push(raw);
+        newItemIcon = raw;
+        if(searchInput) searchInput.value = '';
+        await save();
+      }else{
+        iconSearchError = `"${raw}" not found — try a different word`;
+      }
+      render();
+    }
+
+    const iconSearchInput = document.getElementById('icon-search-input');
+    if(iconSearchInput){
+      iconSearchInput.addEventListener('keydown', async (e) => { if(e.key === 'Enter') await submitIconSearch(); });
+    }
+    const iconSearchBtn = document.getElementById('icon-search-btn');
+    if(iconSearchBtn){ iconSearchBtn.addEventListener('click', submitIconSearch); }
+
+    const commentArea = document.getElementById('comment-textarea');
+    if(commentArea){
+      commentArea.addEventListener('blur', async () => {
+        data.comments[todayKey()] = commentArea.value;
+        await save();
+      });
+    }
   }
 
   function bindProgressEvents(){
@@ -787,6 +920,7 @@
     if(prevBtn){
       prevBtn.addEventListener('click', () => {
         progressMonth = new Date(progressMonth.getFullYear(), progressMonth.getMonth()-1, 1);
+        selectedProgressDay = null;
         render();
       });
     }
@@ -794,9 +928,18 @@
     if(nextBtn){
       nextBtn.addEventListener('click', () => {
         progressMonth = new Date(progressMonth.getFullYear(), progressMonth.getMonth()+1, 1);
+        selectedProgressDay = null;
         render();
       });
     }
+
+    root.querySelectorAll('[data-daykey]').forEach(cell => {
+      cell.addEventListener('click', () => {
+        const key = cell.dataset.daykey;
+        selectedProgressDay = (selectedProgressDay === key) ? null : key;
+        render();
+      });
+    });
   }
 
   function bindFocusEvents(){
