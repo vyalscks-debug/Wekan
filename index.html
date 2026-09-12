@@ -294,6 +294,7 @@
   let newItemText = '';
   let iconSearchError = '';
   let showIconSearch = false;
+  let iconEditMode = false;
   let progressMonth = new Date(); progressMonth.setDate(1);
   let selectedProgressDay = null;
 
@@ -451,6 +452,7 @@
 
     const iconPickerHtml = allIconKeys().map(key => {
       const btn = `<button class="icon-pill${key===newItemIcon?' active':''}" data-iconkey="${key}" title="${escapeHtml(labelForIcon(key))}">${iconMarkup(key)}</button>`;
+      if(!iconEditMode) return btn;
       return `<span class="icon-pill-wrap">${btn}<button class="icon-pill-remove" data-removeicon="${key}" title="Remove">×</button></span>`;
     }).join('');
 
@@ -471,6 +473,7 @@
           </div>
           ${iconSearchError ? `<p class="reminder-sub" style="text-align:left; color:var(--ink); margin-top:0; margin-bottom:12px;">${escapeHtml(iconSearchError)}</p>` : ''}
         ` : `<button class="quote-add-link" id="show-icon-search-btn" style="margin-bottom:16px;">+ search more icons</button>`}
+        <button class="quote-add-link" id="icon-edit-toggle-btn" style="margin-left:10px; margin-bottom:16px;">${iconEditMode ? 'Done' : 'Edit'}</button>
         ${(data.hiddenIconKeys || []).length ? `<button class="quote-add-link" id="restore-icons-btn" style="margin-left:10px; margin-bottom:16px;">↺ restore removed icons</button>` : ''}
         <div class="add-row">
           <span class="add-icon-preview">${iconMarkup(newItemIcon)}</span>
