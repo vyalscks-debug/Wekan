@@ -7,8 +7,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Daily" />
 <title>Daily</title>
+<!-- TensorFlow & BlazeFace -->
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
+<!-- Firebase App & Database (compat SDK) -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -29,7 +33,10 @@
   #root{ max-width:420px; margin:0 auto; padding:36px 22px 90px; min-height:100vh; }
 
   .top-bar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .top-left{ display:flex; align-items:center; gap:8px; }
   .eyebrow{ font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); margin:0; }
+  .sync-badge{ font-family:'JetBrains Mono', monospace; font-size:9.5px; padding:2px 6px; border-radius:8px; border:1px solid var(--muted); color:var(--muted); }
+  .sync-badge.online{ border-color:var(--ink); color:var(--ink); font-weight:600; }
   .theme-toggle{ border:1px solid var(--ink); background:var(--paper); color:var(--ink); font-family:'JetBrains Mono', monospace; font-size:10.5px; padding:5px 11px; border-radius:12px; cursor:pointer; }
   .theme-toggle:hover{ background:var(--hover); }
 
@@ -166,6 +173,12 @@
   .reminder-btn.off{ background:var(--paper); color:var(--ink); }
   .reminder-sub{ font-size:11px; color:var(--muted); margin-top:8px; line-height:1.5; text-align:center; }
   .quote-add-link{ background:none; border:none; font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--muted); cursor:pointer; padding:0; text-decoration:underline; text-underline-offset:2px; }
+  .edit-icons-btn{
+    border:1.3px solid var(--ink); background:var(--paper); color:var(--ink);
+    font-family:'JetBrains Mono', monospace; font-size:12px; padding:8px 16px;
+    border-radius:16px; cursor:pointer; margin-bottom:16px;
+  }
+  .edit-icons-btn.active{ background:var(--ink); color:var(--paper); }
 
   .status{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--muted); text-align:center; padding:60px 0; }
 </style>
@@ -175,6 +188,33 @@
 
 <script>
 (function(){
+  // ==========================================
+  // ⚙️ Firebase 설정 (사용자 설정값 적용 완료)
+  // ==========================================
+  const firebaseConfig = {
+    apiKey: "AIzaSyCitVETsMx-5ax48t4UViBT8DyIMOiB0sM",
+    authDomain: "zero-3dfef.firebaseapp.com",
+    databaseURL: "https://zero-3dfef-default-rtdb.firebaseio.com",
+    projectId: "zero-3dfef",
+    storageBucket: "zero-3dfef.firebasestorage.app",
+    messagingSenderId: "59219649844",
+    appId: "1:59219649844:web:38546f1960e27abac83161",
+    measurementId: "G-VDFG7XTY64"
+  };
+
+  let db = null;
+  let firebaseEnabled = false;
+
+  if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
+    try {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.database();
+      firebaseEnabled = true;
+    } catch(e) {
+      console.error("Firebase 연결 실패:", e);
+    }
+  }
+
   const STORAGE_KEY = 'daily-app-data-v3';
   const root = document.getElementById('root');
   const MONTHS_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -234,7 +274,7 @@
       iconCache[key] = text;
       return true;
     }catch(e){
-      iconCache[key] = null; // stay on hand-drawn fallback (built-ins only)
+      iconCache[key] = null;
       return false;
     }
   }
@@ -284,8 +324,6 @@
     try{ localStorage.setItem(key, value); }catch(e){ console.error('Save failed', e); }
   }
 
-  // Each item is a one-time logged action tied to the date it was added.
-  // Adding = logging it (instantly counted). Deleting = the only undo.
   let data = { items: [], voiceClips: {}, comments: {}, customIconKeys: [], hiddenIconKeys: [] };
   let theme = 'light';
   let activeTab = 'today';
@@ -293,7 +331,6 @@
   let newItemType = 'plan';
   let newItemText = '';
   let iconSearchError = '';
-  let showIconSearch = false;
   let iconEditMode = false;
   let progressMonth = new Date(); progressMonth.setDate(1);
   let selectedProgressDay = null;
@@ -422,9 +459,35 @@
 
     await Promise.all(allIconKeys().map(k => fetchIconSilent(k)));
     render();
+
+    // Firebase 실시간 데이터 구독
+    if (firebaseEnabled && db) {
+      db.ref('daily_app_data').on('value', async (snapshot) => {
+        const val = snapshot.val();
+        if (val) {
+          data = val;
+          if(!data.items) data.items = [];
+          if(!data.voiceClips) data.voiceClips = {};
+          if(!data.comments) data.comments = {};
+          if(!data.customIconKeys) data.customIconKeys = [];
+          if(!data.hiddenIconKeys) data.hiddenIconKeys = [];
+          await Promise.all(allIconKeys().map(k => fetchIconSilent(k)));
+          render();
+        }
+      });
+    }
   }
 
-  async function save(){ await storageSet(STORAGE_KEY, JSON.stringify(data)); }
+  async function save(){
+    await storageSet(STORAGE_KEY, JSON.stringify(data));
+    if (firebaseEnabled && db) {
+      try {
+        await db.ref('daily_app_data').set(data);
+      } catch(e) {
+        console.error('Firebase 데이터 저장 실패:', e);
+      }
+    }
+  }
 
   function typePillMarkup(type){
     const n = type === 'heal' ? '+1' : '−1';
@@ -466,15 +529,15 @@
         <div class="type-picker">${typePickerHtml}</div>
         <div class="picker-label">Icon</div>
         <div class="icon-picker">${iconPickerHtml}</div>
-        ${showIconSearch ? `
+        <button class="edit-icons-btn${iconEditMode ? ' active' : ''}" id="icon-edit-toggle-btn">${iconEditMode ? 'Done' : 'Edit icons'}</button>
+        ${iconEditMode ? `
           <div class="add-row" style="margin-bottom:6px;">
-            <input class="add-input" id="icon-search-input" type="text" placeholder="Search more icons (e.g. bath)" />
+            <input class="add-input" id="icon-search-input" type="text" placeholder="Search icons (e.g. pizza, guitar)" />
             <button class="add-submit-btn" id="icon-search-btn">Find</button>
           </div>
           ${iconSearchError ? `<p class="reminder-sub" style="text-align:left; color:var(--ink); margin-top:0; margin-bottom:12px;">${escapeHtml(iconSearchError)}</p>` : ''}
-        ` : `<button class="quote-add-link" id="show-icon-search-btn" style="margin-bottom:16px;">+ search more icons</button>`}
-        <button class="quote-add-link" id="icon-edit-toggle-btn" style="margin-left:10px; margin-bottom:16px;">${iconEditMode ? 'Done' : 'Edit'}</button>
-        ${(data.hiddenIconKeys || []).length ? `<button class="quote-add-link" id="restore-icons-btn" style="margin-left:10px; margin-bottom:16px;">↺ restore removed icons</button>` : ''}
+          ${(data.hiddenIconKeys || []).length ? `<button class="quote-add-link" id="restore-icons-btn" style="margin-bottom:16px;">↺ restore removed icons</button>` : ''}
+        ` : ''}
         <div class="add-row">
           <span class="add-icon-preview">${iconMarkup(newItemIcon)}</span>
           <input class="add-input" id="add-input" type="text" placeholder="Name (optional)" value="${escapeHtml(newItemText)}" />
@@ -816,9 +879,16 @@
         <button class="tab-btn${activeTab==='focus'?' active':''}" data-tab="focus">Focus</button>
       </div>`;
 
+    const syncStatusHtml = firebaseEnabled 
+      ? `<span class="sync-badge online" title="Firebase 연동됨">☁ Sync</span>` 
+      : `<span class="sync-badge" title="Firebase 설정 필요">Local</span>`;
+
     root.innerHTML = `
       <div class="top-bar">
-        <p class="eyebrow">DAILY</p>
+        <div class="top-left">
+          <p class="eyebrow">DAILY</p>
+          ${syncStatusHtml}
+        </div>
         <button class="theme-toggle" id="theme-toggle">${theme === 'dark' ? 'Light' : 'Dark'}</button>
       </div>
       ${tabsHtml}
@@ -916,12 +986,14 @@
     const iconSearchBtn = document.getElementById('icon-search-btn');
     if(iconSearchBtn){ iconSearchBtn.addEventListener('click', submitIconSearch); }
 
-    const showSearchBtn = document.getElementById('show-icon-search-btn');
-    if(showSearchBtn){
-      showSearchBtn.addEventListener('click', () => {
-        showIconSearch = true;
+    const iconEditToggleBtn = document.getElementById('icon-edit-toggle-btn');
+    if(iconEditToggleBtn){
+      iconEditToggleBtn.addEventListener('click', () => {
+        iconEditMode = !iconEditMode;
         render();
-        const input = document.getElementById('icon-search-input'); if(input) input.focus();
+        if(iconEditMode){
+          const input = document.getElementById('icon-search-input'); if(input) input.focus();
+        }
       });
     }
 
