@@ -182,7 +182,18 @@
 
   .status{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--muted); text-align:center; padding:60px 0; }
 </style>
-</head>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+<!-- 홈 화면 앱 이름 설정 -->
+<meta name="apple-mobile-web-app-title" content="Caru" />
+<title>Caru</title>
+
+<!-- 홈 화면 아이콘 (검은 배경 + 흰색 ± 기호) -->
+<link rel="apple-touch-icon" href="data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' fill='%23111111'/%3E%3Cline x1='60' y1='58' x2='120' y2='58' stroke='%23ffffff' stroke-width='12' stroke-linecap='round'/%3E%3Cline x1='90' y1='28' x2='90' y2='88' stroke='%23ffffff' stroke-width='12' stroke-linecap='round'/%3E%3Cline x1='60' y1='130' x2='120' y2='130' stroke='%23ffffff' stroke-width='12' stroke-linecap='round'/%3E%3C/svg%3E" />
 <body>
 <div id="root"><div class="status">Loading…</div></div>
 
@@ -551,40 +562,49 @@
     `;
   }
 
-  function renderProgressTab(){
-    const { balance, healDone, planDone } = totalBalance();
-    const note = balance >= 0
-      ? 'You have credit to spend on Drain items.'
-      : "You're in debt — do some Charge items to charge back up.";
-    const streak = currentStreak();
+// 1. 월요일 시작 기준 요일 배열
+const WEEKDAYS_MON_FIRST = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    const year = progressMonth.getFullYear(), month = progressMonth.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const daysInMonth = new Date(year, month+1, 0).getDate();
-    const startWeekday = firstDay.getDay();
-    const todayStr = todayKey();
+// 2. renderProgressTab 함수 내부 수정
+function renderProgressTab(){
+  const { balance, healDone, planDone } = totalBalance();
+  const note = balance >= 0
+    ? 'You have credit to spend on Drain items.'
+    : "You're in debt — do some Charge items to charge back up.";
+  const streak = currentStreak();
 
-    let cellsHtml = '';
-    for(let i = 0; i < startWeekday; i++){ cellsHtml += `<div class="month-cell"></div>`; }
-    for(let d = 1; d <= daysInMonth; d++){
-      const cellDate = new Date(year, month, d);
-      const key = dkeyFromDate(cellDate);
-      const dayItems = data.items.filter(it => it.date === key);
-      let dotClass = '';
-      if(dayItems.length > 0){
-        const net = dayItems.reduce((s, it) => s + (it.type === 'heal' ? 1 : -1), 0);
-        dotClass = net >= 0 ? 'positive' : 'negative';
-      }
-      const isToday = key === todayStr ? ' today' : '';
-      const isSelected = key === selectedProgressDay ? ' selected' : '';
-      cellsHtml += `
-        <div class="month-cell${isToday}${isSelected}" data-daykey="${key}">
-          <span class="month-daynum">${d}</span>
-          <span class="month-dot ${dotClass}"></span>
-        </div>`;
+  const year = progressMonth.getFullYear(), month = progressMonth.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  
+  // 일요일(0) -> index 6, 월요일(1) -> index 0으로 변환
+  const startWeekday = (firstDay.getDay() + 6) % 7; 
+  const todayStr = todayKey();
+
+  let cellsHtml = '';
+  for(let i = 0; i < startWeekday; i++){ cellsHtml += `<div class="month-cell"></div>`; }
+  for(let d = 1; d <= daysInMonth; d++){
+    const cellDate = new Date(year, month, d);
+    const key = dkeyFromDate(cellDate);
+    const dayItems = data.items.filter(it => it.date === key);
+    let dotClass = '';
+    if(dayItems.length > 0){
+      const net = dayItems.reduce((s, it) => s + (it.type === 'heal' ? 1 : -1), 0);
+      dotClass = net >= 0 ? 'positive' : 'negative';
     }
+    const isToday = key === todayStr ? ' today' : '';
+    const isSelected = key === selectedProgressDay ? ' selected' : '';
+    cellsHtml += `
+      <div class="month-cell${isToday}${isSelected}" data-daykey="${key}">
+        <span class="month-daynum">${d}</span>
+        <span class="month-dot ${dotClass}"></span>
+      </div>`;
+  }
 
-    const weekdayRowHtml = DAY_NAMES_SHORT.map(w => `<div class="month-weekday-cell">${w[0]}</div>`).join('');
+  // 월~일 순서로 M T W T F S S 헤더 생성
+  const weekdayRowHtml = WEEKDAYS_MON_FIRST.map(w => `<div class="month-weekday-cell">${w[0]}</div>`).join('');
+
+  // ... (이하 동일)
 
     let dayDetailHtml = '';
     if(selectedProgressDay){
@@ -593,6 +613,9 @@
       const [yy,mm,dd] = selectedProgressDay.split('-').map(Number);
       const labelDate = new Date(yy, mm-1, dd);
       const dateLabel = `${DAY_NAMES_SHORT[labelDate.getDay()]}, ${MONTHS_SHORT[mm-1]} ${dd}`;
+// 기존 상수들 아래에 추가
+const DAY_NAMES_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const WEEKDAYS_MON_FIRST = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       const itemsHtml = dItems.length
         ? dItems.map(it => `
             <div class="day-detail-item">
